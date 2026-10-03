@@ -24,6 +24,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Actions from './Actions';
+import DeviceNameCell from './DeviceNameCell';
+import { withApNameColumn } from './columnOrder';
 import ExportDevicesTableButton from './ExportButton';
 import DeviceListFirmwareButton from './FirmwareButton';
 import DeviceTableGpsCell from './GpsCell';
@@ -99,6 +101,7 @@ const DeviceListCard = () => {
     tableSettingsId: 'gateway.devices.table',
     defaultOrder: [
       'badge',
+      'apName',
       'serialNumber',
       'sanity',
       'memory',
@@ -411,6 +414,19 @@ const DeviceListCard = () => {
           anchored: true,
           customWidth: '35px',
           alwaysShow: true,
+        },
+      },
+      {
+        id: 'apName',
+        header: 'AP Name',
+        footer: '',
+        cell: (v) => <DeviceNameCell device={v.cell.row.original} />,
+        enableSorting: false,
+        meta: {
+          anchored: true,
+          alwaysShow: true,
+          customMinWidth: '150px',
+          customMaxWidth: '260px',
         },
       },
       {
@@ -728,7 +744,7 @@ const DeviceListCard = () => {
   return (
     <Box>
       <DataGrid<DeviceWithStatus>
-        controller={tableController}
+        controller={{ ...tableController, columnOrder: withApNameColumn(tableController.columnOrder) }}
         header={{
           title: `${getCount.data?.count ?? 0} ${t('devices.title')}`,
           objectListed: t('devices.title'),

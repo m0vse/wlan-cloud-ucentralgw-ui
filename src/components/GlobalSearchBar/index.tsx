@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Tooltip, useColorMode, useColorModeValue } from '@chakra-ui/react';
 import {
   AsyncSelect,
@@ -13,6 +14,9 @@ import { useNavigate } from 'react-router-dom';
 import { useControllerStore } from 'contexts/ControllerSocketProvider/useStore';
 import debounce from 'helpers/debounce';
 import { getUsernameRadiusSessions } from 'hooks/Network/Radius';
+import { axiosProv } from 'constants/axiosInstances';
+import { InventoryTag } from 'hooks/Network/Inventory';
+import { matchApNames } from 'helpers/apNameSearch';
 
 const chakraStyles: (
   colorMode: 'light' | 'dark',
@@ -45,7 +49,7 @@ const chakraStyles: (
 interface SearchOption extends OptionBase {
   label: string;
   value: string;
-  type: 'serial' | 'radius-username' | 'radius-mac';
+  type: 'serial' | 'radius-username' | 'radius-mac' | 'name';
 }
 
 const asyncComponents = {
@@ -77,6 +81,7 @@ const asyncComponents = {
 const GlobalSearchBar = () => {
   const { colorMode } = useColorMode();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const store = useControllerStore((state) => ({
     searchSerialNumber: state.searchSerialNumber,
   }));
@@ -100,9 +105,22 @@ const GlobalSearchBar = () => {
                 }))
                 .filter(({ value }, i, a) => a.findIndex((t) => t.value === value) === i) as SearchOption[],
             ),
-          )
-          .then(() => callback([]));
+          );
       }
+      // Use the authenticated provisioning inventory, not only the visible device page.
+      const names = await queryClient.fetchQuery(
+        ['global-search-inventory-names'],
+        async () => {
+          const tags: Pick<InventoryTag, 'name' | 'serialNumber'>[] = [];
+          for (let offset = 0; ; offset += 100) {
+            const { data } = await axiosProv.get(`inventory?limit=100&offset=${offset}`);
+            const page: InventoryTag[] = data.taglist ?? [];
+            tags.push(...page.map(({ name, serialNumber }) => ({ name, serialNumber })));
+            if (page.length < 100) return tags;
+          }
+        },
+        { staleTime: 60000 },
+      ).then((tags) => matchApNames(tags, v)).catch(() => []);
       if (v.match('^[a-fA-F0-9-*]+$')) {
         let result: { label: string; value: string; type: 'serial' }[] = [];
         let tryAgain = true;
@@ -140,11 +158,12 @@ const GlobalSearchBar = () => {
             });
         }
 
-        callback(result);
+        const seen = new Set(names.map(({ value }) => value));
+        return callback([...names, ...result.filter(({ value }) => !seen.has(value))]);
       }
-      return callback([]);
+      return callback(names);
     },
-    [],
+    [queryClient, store.searchSerialNumber],
   );
 
   const debouncedNewSearch = React.useCallback(
@@ -161,14 +180,14 @@ const GlobalSearchBar = () => {
       },
       300,
     ),
-    [],
+    [onNewSearch],
   );
 
   const styles = React.useMemo(() => chakraStyles(colorMode), [colorMode]);
 
   return (
     <Tooltip
-      label={`Search serial numbers and radius clients. For radius clients you can either use the client's username (rad:client@client.com)
+      label={`Search AP names (partial, case-insensitive), serial numbers and radius clients. For radius clients you can either use the client's username (rad:client@client.com)
        or use the client's station ID (rad:11:22:33:44:55:66)`}
       shouldWrapChildren
       placement="left"
@@ -177,7 +196,7 @@ const GlobalSearchBar = () => {
         name="global_search"
         chakraStyles={styles}
         closeMenuOnSelect
-        placeholder="Search MACs or radius clients"
+        placeholder="Search AP names, MACs or RADIUS"
         components={asyncComponents}
         loadOptions={(inputValue, callback) => {
           debouncedNewSearch({ v: inputValue, callback });
