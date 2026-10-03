@@ -1,4 +1,5 @@
 import React from 'react';
+import { interfaceCounters } from 'helpers/trafficRate';
 import { DeviceStatistics, useGetDeviceNewestStats, useGetDeviceStatsWithTimestamps } from 'hooks/Network/Statistics';
 
 const extractMemory = (stat: DeviceStatistics) => {
@@ -100,10 +101,11 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
               updated = true;
               setSelected(inter.name);
             }
-            previousRx[inter.name] = inter.counters?.rx_bytes ?? 0;
-            previousTx[inter.name] = inter.counters?.tx_bytes ?? 0;
-            previousPacketsRx[inter.name] = inter.counters?.rx_packets ?? 0;
-            previousPacketsTx[inter.name] = inter.counters?.tx_packets ?? 0;
+            const counters = interfaceCounters(inter);
+            previousRx[inter.name] = counters.rx_bytes;
+            previousTx[inter.name] = counters.tx_bytes;
+            previousPacketsRx[inter.name] = counters.rx_packets;
+            previousPacketsTx[inter.name] = counters.tx_packets;
           }
           for (const vlan of stat.data.dynamic_vlans ?? []) {
             previousVlanRx[vlan.vid] = vlan.rx_bytes ?? 0;
@@ -201,25 +203,11 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
 
           // Interfaces
           for (const inter of stat.data.interfaces ?? []) {
-            const isInterUpstream = inter.name?.substring(0, 2) === 'up';
-            let rx = inter.counters?.rx_bytes ?? 0;
-            let tx = inter.counters?.tx_bytes ?? 0;
-            let packetsRx = inter.counters?.rx_packets ?? 0;
-            let packetsTx = inter.counters?.tx_packets ?? 0;
-
-            if (inter['counters-aggregate']) {
-              rx = inter['counters-aggregate'].rx_bytes;
-              tx = inter['counters-aggregate'].tx_bytes;
-              packetsRx = inter['counters-aggregate'].rx_packets;
-              packetsTx = inter['counters-aggregate'].tx_packets;
-            } else if (isInterUpstream) {
-              for (const ssid of inter.ssids ?? []) {
-                rx += ssid.counters?.rx_bytes ?? 0;
-                tx += ssid.counters?.tx_bytes ?? 0;
-                packetsRx += ssid.counters?.rx_packets ?? 0;
-                packetsTx += ssid.counters?.tx_packets ?? 0;
-              }
-            }
+            const counters = interfaceCounters(inter);
+            const rx = counters.rx_bytes;
+            const tx = counters.tx_bytes;
+            const packetsRx = counters.rx_packets;
+            const packetsTx = counters.tx_packets;
 
             let rxDelta = rx - (previousRx[inter.name] ?? 0);
             if (rxDelta < 0) rxDelta = 0;
