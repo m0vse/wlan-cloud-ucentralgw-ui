@@ -29,7 +29,7 @@ assert.match(result.labels['ssid:a'], /Phil \(6G, wlan2\)/);
 assert.match(result.labels['radio:pci-radio'], /6G/);
 result = wirelessTraffic([{ recorded: 0, data: first }, { recorded: 90, data: state([bss('a', 20)]) }]);
 assert.ok(Number.isNaN(result.series['ssid:a'].tx[0]));
-assert.ok(Number.isNaN(result.series['ssid:b'].tx[0]));
+assert.equal(result.series['ssid:b'], undefined);
 assert.ok(Number.isNaN(result.series['radio:pci-radio'].tx[0]));
 assert.deepEqual(result.series['ssid:a'].intervals, [90]);
 const missing = state([{ ...bss('a', 1), counters: undefined }]);
@@ -47,6 +47,12 @@ const startsAfterCac = wirelessTraffic([
 assert.match(startsAfterCac.labels['ssid:a'], /Phil/);
 assert.ok(Number.isNaN(startsAfterCac.series['ssid:a'].tx[0]));
 assert.equal(startsAfterCac.series['ssid:a'].tx[1], 300);
+const returnsToCac = wirelessTraffic([
+  { recorded: 0, data: first },
+  { recorded: 60, data: state([{ ...bss('a', 400), ssid: null }]) },
+]);
+assert.deepEqual(returnsToCac.labels, {});
+assert.deepEqual(returnsToCac.series, {});
 const ui = fs.readFileSync('./src/pages/Device/StatisticsCard/index.tsx', 'utf8');
 assert.match(ui, /parsedData.labels\[v\] \?\? interfaceNameLabel\(v\)/);
 console.log('PASS: separate BSSID/radio series, real 6G labels, deduplication, counter resets, missing reports and variable intervals');

@@ -73,5 +73,12 @@ export const wirelessTraffic = (samples: { recorded: number; data: DeviceStatist
     for (const [key, values] of Object.entries(totals)) append(key, values, sample.recorded, seconds);
     previous = current; previousTime = sample.recorded;
   }
+  // Keep history for active selections, but hide BSS/radios unnamed or absent
+  // in the latest sample (including BSS still waiting through DFS CAC).
+  const visible = new Set(Object.entries(previous).flatMap(([key, reading]) => [key, reading.radio]));
+  for (const key of Object.keys(labels)) if (!visible.has(key)) {
+    delete labels[key];
+    delete series[key];
+  }
   return { series, labels };
 };
