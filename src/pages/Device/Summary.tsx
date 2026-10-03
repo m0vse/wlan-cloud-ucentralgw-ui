@@ -25,7 +25,7 @@ import COUNTRY_LIST from 'constants/countryList';
 import { compactDate, compactSecondsToDetailed } from 'helpers/dateFormatting';
 import { bytesString, getRevision, uppercaseFirstLetter } from 'helpers/stringHelper';
 import { getDisplayCountry } from 'helpers/ipCountry';
-import { useGetDevice, useGetDeviceStatus } from 'hooks/Network/Devices';
+import { useGetDevice, useGetDeviceCapabilities, useGetDeviceStatus } from 'hooks/Network/Devices';
 import { useGetDeviceLastStats } from 'hooks/Network/Statistics';
 
 const ICON_STYLE = { width: '24px', height: '24px', marginRight: '8px' };
@@ -39,6 +39,7 @@ const DeviceSummary = ({ serialNumber }: Props) => {
   const { t } = useTranslation();
   const { colorMode } = useColorMode();
   const getDevice = useGetDevice({ serialNumber });
+  const getCapabilities = useGetDeviceCapabilities({ serialNumber });
   const getStatus = useGetDeviceStatus({ serialNumber });
   const getStats = useGetDeviceLastStats({ serialNumber });
   const country = getDisplayCountry(getStatus.data?.ipAddress, getDevice.data?.locale);
@@ -68,12 +69,21 @@ const DeviceSummary = ({ serialNumber }: Props) => {
     return '-';
   };
 
-  const getDeviceCompatible = () => {
+  const getDeviceImageName = () => {
     if (!getDevice.data?.compatible) return undefined;
+
+    if (getDevice.data.compatible === 'cambium-sage') {
+      const model = getCapabilities.data?.capabilities.model;
+
+      if (typeof model === 'string') {
+        if (/E410B/i.test(model)) return 'cambium_e410b';
+        if (/E410/i.test(model)) return 'cambium_e410';
+      }
+    }
 
     if (getDevice.data.compatible.includes(' ')) return getDevice.data.compatible.replaceAll(' ', '_');
 
-    return getDevice.data?.compatible;
+    return getDevice.data?.compatible.replace(/^cambium-/, 'cambium_');
   };
 
   return (
@@ -89,7 +99,7 @@ const DeviceSummary = ({ serialNumber }: Props) => {
       <CardBody>
         <Flex w="100%" alignItems="center">
           <Image
-            src={`devices/${getDeviceCompatible()}.png`}
+            src={`devices/${getDeviceImageName()}.png`}
             alt={getDevice?.data?.compatible}
             fallback={
               <Box minW="220px" w="220px" h="220px" mr={4} display="flex">

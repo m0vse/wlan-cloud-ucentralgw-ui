@@ -447,7 +447,7 @@ export const useGetDeviceRtty = ({ serialNumber, extraId }: { serialNumber: stri
 };
 
 export type DeviceCapabilities = {
-  capabilities: { [key: string]: unknown }[];
+  capabilities: Record<string, unknown>;
   serialNumber: string;
   firstUpdate: number;
   lastUpdate: number;
