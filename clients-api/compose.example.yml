@@ -1,0 +1,25 @@
+# Merge with the controller Compose files. Only the UI exposes this service.
+services:
+  owclients:
+    image: openwifi-clients-api:root-only-r1
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [openwifi]
+    extra_hosts:
+      - "openwifi.shinesystems.co.uk:host-gateway"
+    environment:
+      CONTROLLER_ORIGIN: "https://openwifi.shinesystems.co.uk"
+    expose: ["8080"]
+    mem_limit: 256m
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  owgw-ui:
+    image: openwifi-owgw-ui:clients-root-only-r3
+    depends_on:
+      owclients:
+        condition: service_healthy
