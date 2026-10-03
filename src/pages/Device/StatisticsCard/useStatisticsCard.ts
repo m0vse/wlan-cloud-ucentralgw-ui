@@ -1,5 +1,6 @@
 import React from 'react';
 import { interfaceCounters } from 'helpers/trafficRate';
+import { wirelessTraffic } from 'helpers/wirelessTraffic';
 import { DeviceStatistics, useGetDeviceNewestStats, useGetDeviceStatsWithTimestamps } from 'hooks/Network/Statistics';
 
 const extractMemory = (stat: DeviceStatistics) => {
@@ -273,8 +274,10 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
           }
         }
       }
+      const wireless = wirelessTraffic(dataToLoop ?? []);
       return {
-        interfaces: data,
+        interfaces: { ...data, ...wireless.series },
+        labels: wireless.labels,
         memory: memoryData,
         vlans: vlanData,
       };

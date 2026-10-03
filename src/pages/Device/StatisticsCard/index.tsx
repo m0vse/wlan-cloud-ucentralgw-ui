@@ -103,7 +103,7 @@ const DeviceStatisticsCard = ({ serialNumber }: Props) => {
             {parsedData?.interfaces
               ? Object.keys(parsedData.interfaces).map((v) => (
                   <option value={v} key={uuid()}>
-                    {interfaceNameLabel(v)}
+                    {parsedData.labels[v] ?? interfaceNameLabel(v)}
                   </option>
                 ))
               : null}
