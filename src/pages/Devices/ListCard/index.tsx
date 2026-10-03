@@ -79,6 +79,8 @@ const BADGE_COLORS: Record<string, string> = {
   SIMULATED: 'purple',
 };
 
+const SAGE_COMPATIBLES = new Set(['cambium-sage', 'cambium_e410', 'cambium_e410b']);
+
 const DeviceListCard = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -359,9 +361,12 @@ const DeviceListCard = () => {
   const memoryCell = React.useCallback((device: DeviceWithStatus) => {
     if (!device.connected) return <Center>-</Center>;
 
+    const isSage = SAGE_COMPATIBLES.has(device.compatible);
+    const warningThreshold = isSage ? 75 : 60;
+    const criticalThreshold = isSage ? 90 : 85;
     let colorScheme = 'red';
-    if (device.memoryUsed <= 85) colorScheme = 'yellow';
-    if (device.memoryUsed <= 60) colorScheme = 'green';
+    if (device.memoryUsed <= criticalThreshold) colorScheme = 'yellow';
+    if (device.memoryUsed <= warningThreshold) colorScheme = 'green';
 
     return (
       <Center>

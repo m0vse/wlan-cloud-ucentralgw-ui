@@ -28,6 +28,7 @@ import { useGetDevice, useGetDeviceStatus } from 'hooks/Network/Devices';
 import { useGetDeviceLastStats } from 'hooks/Network/Statistics';
 
 const ICON_STYLE = { width: '24px', height: '24px', marginRight: '8px' };
+const SAGE_COMPATIBLES = new Set(['cambium-sage', 'cambium_e410', 'cambium_e410b']);
 
 type Props = {
   serialNumber: string;
@@ -45,9 +46,12 @@ const DeviceSummary = ({ serialNumber }: Props) => {
       const usedMemory = getStats.data.unit.memory.total - getStats.data.unit.memory.free;
       const memoryUsedPct =
         getStats.data?.unit?.memory.total > 0 ? (usedMemory / getStats.data.unit.memory.total) * 100 : 0;
+      const isSage = SAGE_COMPATIBLES.has(getDevice.data?.compatible ?? '');
+      const warningThreshold = isSage ? 75 : 60;
+      const criticalThreshold = isSage ? 90 : 85;
       let color = 'red';
-      if (memoryUsedPct < 60) color = 'green';
-      else if (memoryUsedPct < 85) color = 'yellow';
+      if (memoryUsedPct <= warningThreshold) color = 'green';
+      else if (memoryUsedPct <= criticalThreshold) color = 'yellow';
 
       return (
         <>
