@@ -7,9 +7,11 @@ import { Card } from 'components/Containers/Card';
 import { CardBody } from 'components/Containers/Card/CardBody';
 import { DataGrid } from 'components/DataTables/DataGrid';
 import { DataGridColumn, useDataGrid } from 'components/DataTables/DataGrid/useDataGrid';
+import { axiosGw } from 'constants/axiosInstances';
+import { normalizeMac, isPrivateMac, vendorFor, vendorColumnOrder } from './vendors';
 
 type AP = { apSerial: string; apName: string; entityId: string; entityName: string; venueId: string; venueName: string; apConnected: boolean };
-type Association = AP & { id: string; mac: string; ssid: string; bssid: string; band: string; channel?: number; ip: string; signal?: number; rxRate?: number; txRate?: number; startTime: number | null; endTime: number | null; lastSeen: number };
+type Association = AP & { id: string; mac: string; vendor?: string; ssid: string; bssid: string; band: string; channel?: number; ip: string; signal?: number; rxRate?: number; txRate?: number; startTime: number | null; endTime: number | null; lastSeen: number };
 type Response = { rows: Association[]; aps: AP[]; errors: { apSerial: string; message: string }[]; generatedAt: number; historySamples: number };
 const date = (value: number | null) => value ? new Date(value * 1000).toLocaleString() : '—';
 const options = (aps: AP[], id: 'entityId' | 'venueId', name: 'entityName' | 'venueName') => Array.from(new Map(aps.filter((ap) => ap[id]).map((ap) => [ap[id], ap[name]])).entries()).sort((a, b) => a[1].localeCompare(b[1]));
@@ -25,6 +27,7 @@ const Clients = () => {
   const [search, setSearch] = React.useState('');
   const columns = React.useMemo<DataGridColumn<Association>[]>(() => [
     { id: 'mac', accessorKey: 'mac', header: 'Client', cell: ({ row }) => <Text fontFamily="mono">{row.original.mac}</Text> },
+    { id: 'vendor', accessorKey: 'vendor', header: 'Vendor' },
     { id: 'ip', accessorKey: 'ip', header: 'IP address', cell: ({ row }) => row.original.ip || '—' },
     { id: 'ssid', accessorKey: 'ssid', header: 'SSID' },
     { id: 'apName', accessorKey: 'apName', header: 'AP', cell: ({ row }) => <><Link as={RouterLink} to={`/devices/${row.original.apSerial}`}>{row.original.apName}</Link>{!row.original.apConnected && <Badge ml={2}>AP offline</Badge>}</> },
@@ -43,10 +46,20 @@ const Clients = () => {
     if (!response.ok) throw new Error(response.status === 403 ? 'Root access required' : 'Unable to load clients');
     return response.json();
   }, { enabled: root && !!token, refetchInterval: 60000, retry: false });
+  const macs = React.useMemo(() => [...new Set((query.data?.rows ?? []).map((row) => row.mac).filter((mac) => !isPrivateMac(mac)))].sort(), [query.data?.rows]);
+  const vendors = useQuery<Record<string, string>>(['fleet-client-vendors', token, macs], async () => {
+    const mapped: Record<string, string> = {};
+    // Bound URL length for larger fleets; use the controller's existing OUI database.
+    for (let offset = 0; offset < macs.length; offset += 100) {
+      const { data } = await axiosGw.get('/ouis', { params: { macList: macs.slice(offset, offset + 100).join(',') } });
+      for (const entry of data.tagList ?? []) if (entry.value) mapped[normalizeMac(entry.tag)] = entry.value;
+    }
+    return mapped;
+  }, { enabled: root && !!token && macs.length > 0, staleTime: 1000 * 60 * 60, retry: false });
   React.useEffect(() => tableController.onPaginationChange((previous) => ({ ...previous, pageIndex: 0 })), [historic, entity, venue, ap, band, search]);
   const aps = query.data?.aps ?? [];
   const scopedAps = aps.filter((item) => (!entity || item.entityId === entity) && (!venue || item.venueId === venue));
-  const rows = (query.data?.rows ?? []).filter((row) => (!entity || row.entityId === entity) && (!venue || row.venueId === venue) && (!ap || row.apSerial === ap) && (!band || row.band === band) && (!search || [row.mac, row.ip, row.ssid, row.apName, row.apSerial].join(' ').toLowerCase().includes(search.toLowerCase())));
+  const rows = (query.data?.rows ?? []).map((row) => ({ ...row, vendor: vendorFor(row.mac, vendors.data ?? {}) })).filter((row) => (!entity || row.entityId === entity) && (!venue || row.venueId === venue) && (!ap || row.apSerial === ap) && (!band || row.band === band) && (!search || [row.mac, row.vendor, row.ip, row.ssid, row.apName, row.apSerial].join(' ').toLowerCase().includes(search.toLowerCase())));
   if (!root) return <Alert status="warning"><AlertIcon />Root access required</Alert>;
   return <Box>
     <Card mb={4}><CardBody><Flex gap={3} wrap="wrap">
@@ -56,16 +69,17 @@ const Clients = () => {
       <FormControl width="120px"><FormLabel fontSize="sm">Band</FormLabel><Select value={band} onChange={(event) => setBand(event.target.value)}><option value="">All bands</option>{['2G', '5G', '6G', 'Unknown'].map((value) => <option key={value} value={value}>{value}</option>)}</Select></FormControl>
     </Flex></CardBody></Card>
     {query.isError && <Alert status="error" mb={3}><AlertIcon />Unable to load clients. Try Refresh.</Alert>}
+    {vendors.isError && <Alert status="warning" mb={3}><AlertIcon />Vendor lookup unavailable.</Alert>}
     {!!query.data?.errors.length && <Alert status="warning" mb={3}><AlertIcon />Some AP reports are unavailable ({query.data.errors.length}).</Alert>}
     <DataGrid<Association>
-      controller={tableController}
+      controller={{ ...tableController, columnOrder: vendorColumnOrder(tableController.columnOrder) }}
       columns={columns}
       data={rows}
       isLoading={query.isFetching}
       header={{
         title: `${rows.length} Clients`,
         objectListed: 'Clients',
-        leftContent: <Input bg="white" color="gray.700" width="280px" maxW="100%" aria-label="Search clients" placeholder="Search MAC, IP, SSID or AP" value={search} onChange={(event) => setSearch(event.target.value)} />,
+        leftContent: <Input bg="white" color="gray.700" width="280px" maxW="100%" aria-label="Search clients" placeholder="Search MAC, vendor, IP, SSID or AP" value={search} onChange={(event) => setSearch(event.target.value)} />,
         otherButtons: <Checkbox whiteSpace="nowrap" isChecked={historic} onChange={(event) => setHistoric(event.target.checked)}>Show historic clients</Checkbox>,
       }}
       options={{ showAsCard: true, isManual: false, count: rows.length, refetch: () => query.refetch() }}
