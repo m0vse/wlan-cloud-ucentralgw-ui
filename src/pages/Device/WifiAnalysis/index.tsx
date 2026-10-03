@@ -51,7 +51,7 @@ const parseRadios = (_: (str: string) => string, data: { data: DeviceStatistics;
           channel: radio.channel,
           channelWidth: radio.channel_width,
           noise,
-          txPower: radioInDfs(radio.phy, data.recorded, health, data.UUID) ? 'DFS' : radio.tx_power ?? '-',
+          txPower: radioInDfs(radio, data.recorded, health, data.UUID, data.data.radios) ? 'DFS' : radio.tx_power ?? '-',
           activeMs,
           busyMs,
           receiveMs,
