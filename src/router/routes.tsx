@@ -1,5 +1,5 @@
 import React from 'react';
-import { Barcode, FloppyDisk, Info, ListBullets, TerminalWindow, UsersThree, WifiHigh } from '@phosphor-icons/react';
+import { Barcode, FloppyDisk, Info, Laptop, ListBullets, TerminalWindow, UsersThree, WifiHigh } from '@phosphor-icons/react';
 import { Route } from 'models/Routes';
 
 const AdvancedSystemPage = React.lazy(() => import('pages/AdvancedSystemPage'));
@@ -8,6 +8,7 @@ const DefaultFirmwarePage = React.lazy(() => import('pages/DefaultFirmware'));
 const DevicePage = React.lazy(() => import('pages/Device'));
 const DashboardPage = React.lazy(() => import('pages/Devices/Dashboard'));
 const AllDevicesPage = React.lazy(() => import('pages/Devices/ListCard'));
+const ClientsPage = React.lazy(() => import('pages/Clients'));
 const BlacklistPage = React.lazy(() => import('pages/Devices/Blacklist'));
 const ControllerLogsPage = React.lazy(() => import('pages/Notifications/GeneralLogs'));
 const DeviceLogsPage = React.lazy(() => import('pages/Notifications/DeviceLogs'));
@@ -76,6 +77,14 @@ const routes: Route[] = [
         component: FirmwareDashboard,
       },
     ],
+  },
+  {
+    id: 'clients',
+    authorized: ['root'],
+    path: '/clients',
+    name: 'Clients',
+    icon: () => <Laptop size={28} weight="bold" />,
+    component: ClientsPage,
   },
   {
     id: 'scripts',

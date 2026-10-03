@@ -1,0 +1,15 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const routes = fs.readFileSync('src/router/routes.tsx', 'utf8');
+const clients = routes.slice(routes.indexOf("id: 'clients'"), routes.indexOf("id: 'scripts'"));
+assert.ok(routes.indexOf("id: 'clients'") > routes.indexOf("id: 'firmware-group'"));
+assert.match(clients, /name: 'Clients'/);
+assert.match(clients, /authorized: \['root'\]/);
+assert.match(clients, /<Laptop size=\{28\} weight="bold"/);
+const page = fs.readFileSync('src/pages/Clients/index.tsx', 'utf8');
+assert.match(page, /Show historic clients/);
+assert.match(page, /useState\(false\)/);
+assert.match(page, /enabled: root && !!token/);
+assert.match(page, /<DataGrid<Association>/);
+assert.match(page, /showAsCard: true/);
+console.log('PASS: Clients menu placement, label, icon, root gate and historic default');
