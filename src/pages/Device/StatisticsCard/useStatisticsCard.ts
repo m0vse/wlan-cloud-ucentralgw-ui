@@ -46,6 +46,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
           packetsRx: number[];
           packetsTx: number[];
           recorded: number[];
+          intervals: number[];
           maxRx: number;
           maxTx: number;
           maxPacketsRx: number;
@@ -69,6 +70,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
           packetsRx: number[];
           packetsTx: number[];
           recorded: number[];
+          intervals: number[];
           maxRx: number;
           maxTx: number;
           maxPacketsRx: number;
@@ -142,6 +144,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
                 packetsRx: [packetsRxDelta],
                 packetsTx: [packetsTxDelta],
                 recorded: [stat.recorded],
+                intervals: [stat.recorded - dataToLoop![index - 1].recorded],
                 maxTx: 0,
                 maxRx: 0,
                 maxPacketsRx: 0,
@@ -154,6 +157,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
                 vlanData[vlan.vid]?.packetsTx.shift();
                 vlanData[vlan.vid]?.packetsRx.shift();
                 vlanData[vlan.vid]?.recorded.shift();
+                vlanData[vlan.vid]?.intervals.shift();
                 // @ts-ignore
                 vlanData[vlan.vid].maxRx = rxDelta;
                 // @ts-ignore
@@ -167,6 +171,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
               vlanData[vlan.vid]?.packetsRx.push(packetsRxDelta);
               vlanData[vlan.vid]?.packetsTx.push(packetsTxDelta);
               vlanData[vlan.vid]?.recorded.push(stat.recorded);
+              vlanData[vlan.vid]?.intervals.push(stat.recorded - dataToLoop![index - 1].recorded);
               // @ts-ignore
               if (vlanData[vlan.vid] !== undefined && txDelta > vlanData[vlan.vid].maxTx) {
                 // @ts-ignore
@@ -232,6 +237,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
                 packetsRx: [packetsRxDelta],
                 packetsTx: [packetsTxDelta],
                 recorded: [stat.recorded],
+                intervals: [stat.recorded - dataToLoop![index - 1].recorded],
                 maxTx: 0,
                 maxRx: 0,
                 maxPacketsRx: 0,
@@ -244,6 +250,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
                 data[inter.name]?.packetsTx.shift();
                 data[inter.name]?.packetsRx.shift();
                 data[inter.name]?.recorded.shift();
+                data[inter.name]?.intervals.shift();
                 // @ts-ignore
                 data[inter.name].maxRx = rxDelta;
                 // @ts-ignore
@@ -257,6 +264,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
               data[inter.name]?.packetsRx.push(packetsRxDelta);
               data[inter.name]?.packetsTx.push(packetsTxDelta);
               data[inter.name]?.recorded.push(stat.recorded);
+              data[inter.name]?.intervals.push(stat.recorded - dataToLoop![index - 1].recorded);
               // @ts-ignore
               if (data[inter.name] !== undefined && txDelta > data[inter.name].maxTx) data[inter.name].maxTx = txDelta;
               // @ts-ignore

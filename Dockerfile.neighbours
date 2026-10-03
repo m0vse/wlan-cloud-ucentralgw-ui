@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json /app/
 RUN npm install
 COPY . .
-RUN node test-country.cjs && node test-ap-name.cjs && node test-neighbours.cjs && node test-topology.cjs && node test-image-names.cjs && node test-clients.cjs && node test-operating-band.cjs && npm run build
+RUN node test-country.cjs && node test-ap-name.cjs && node test-neighbours.cjs && node test-topology.cjs && node test-image-names.cjs && node test-clients.cjs && node test-operating-band.cjs && node test-traffic-rate.cjs && npm run build
 FROM nginx:1.22.0-alpine AS runtime
 COPY --from=build /app/build/ /usr/share/nginx/html/
 COPY --from=build /app/docker-entrypoint.d/40-generate-config.sh /docker-entrypoint.d/40-generate-config.sh

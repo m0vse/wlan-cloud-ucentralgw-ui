@@ -43,7 +43,7 @@ const DeviceStatisticsCard = ({ serialNumber }: Props) => {
   const { time, setTime, parsedData, isLoading, selected, onSelectInterface, refresh } = useStatisticsCard({
     serialNumber,
   });
-  const [formatChosen, setFormatChosen] = React.useState<'bytes' | 'packets'>('bytes');
+  const [formatChosen, setFormatChosen] = React.useState<'rate' | 'bytes' | 'packets'>('rate');
 
   const setNewTime = (start: Date, end: Date) => {
     setTime({ start, end });
@@ -53,7 +53,7 @@ const DeviceStatisticsCard = ({ serialNumber }: Props) => {
   };
 
   const onFormatChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormatChosen(e.target.value as 'bytes' | 'packets');
+    setFormatChosen(e.target.value as 'rate' | 'bytes' | 'packets');
   };
 
   const interfaces = React.useMemo(() => {
@@ -93,8 +93,9 @@ const DeviceStatisticsCard = ({ serialNumber }: Props) => {
         <Spacer />
         <HStack>
           {selected === 'memory' ? null : (
-            <Select value={formatChosen} onChange={onFormatChange} w="112px">
-              <option value="bytes">Data</option>
+            <Select value={formatChosen} onChange={onFormatChange} w="180px">
+              <option value="rate">Traffic rate</option>
+              <option value="bytes">Data transferred</option>
               <option value="packets">Packets</option>
             </Select>
           )}

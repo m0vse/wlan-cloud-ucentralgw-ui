@@ -13,6 +13,7 @@ import {
   ChartData,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { rateScale, trafficRate } from 'helpers/trafficRate';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -49,43 +50,46 @@ type Props = {
     packetsRx: number[];
     packetsTx: number[];
     recorded: number[];
+    intervals: number[];
     maxRx: number;
     maxTx: number;
     maxPacketsRx: number;
     maxPacketsTx: number;
     removed?: boolean;
   };
-  format: 'bytes' | 'packets';
+  format: 'rate' | 'bytes' | 'packets';
 };
 
 const InterfaceChart = ({ data, format }: Props) => {
   const { colorMode } = useColorMode();
 
-  const { factor, unit } = getDivisionFactor(data.maxTx);
+  const txRates = data.tx.map((bytes, i) => trafficRate(bytes, data.intervals[i]));
+  const rxRates = data.rx.map((bytes, i) => trafficRate(bytes, data.intervals[i]));
+  const { factor, unit } = format === 'rate'
+    ? rateScale(Math.max(0, ...txRates.map((v) => v ?? 0), ...rxRates.map((v) => v ?? 0)))
+    : getDivisionFactor(Math.max(data.maxTx, data.maxRx));
   const packetsFactor = getDivisionFactorPackets(
     data.maxPacketsTx > data.maxPacketsRx ? data.maxPacketsTx : data.maxPacketsRx,
   );
 
-  const bytesPoints: ChartData<'line', string[], string> = {
+  const bytesPoints: ChartData<'line', (number | null)[], string> = {
     labels: data.recorded.map((recorded) => new Date(recorded * 1000).toLocaleTimeString()),
     datasets: [
       {
-        // Real 'Tx', but shown as 'Rx'
         label: 'Tx',
-        data: data.rx.map((tx) => (Math.floor((tx / factor) * 100) / 100).toFixed(2)),
+        data: format === 'rate' ? txRates.map((v) => v === null ? null : v / factor) : data.tx.map((v) => v / factor),
         borderColor: colorMode === 'light' ? 'rgba(99, 179, 237, 1)' : 'rgba(190, 227, 248, 1)', // blue-300 - blue-100
         backgroundColor: colorMode === 'light' ? 'rgba(99, 179, 237, 0.3)' : 'rgba(190, 227, 248, 0.3)', // blue-300 - blue-100
-        tension: 0.5,
+        tension: 0,
         pointRadius: 0,
         fill: 'start',
       },
       {
-        // Real 'Rx', but shown as 'Tx'
         label: 'Rx',
-        data: data.tx.map((rx) => (Math.floor((rx / factor) * 100) / 100).toFixed(2)),
+        data: format === 'rate' ? rxRates.map((v) => v === null ? null : v / factor) : data.rx.map((v) => v / factor),
         borderColor: colorMode === 'light' ? 'rgba(72, 187, 120, 1)' : 'rgba(154, 230, 180, 1)', // green-400 - green-200
         backgroundColor: colorMode === 'light' ? 'rgba(72, 187, 120, 0.3)' : 'rgba(154, 230, 180, 0.3)', // green-400 - green-200
-        tension: 0.5,
+        tension: 0,
         pointRadius: 0,
         fill: 'start',
       },
@@ -95,9 +99,8 @@ const InterfaceChart = ({ data, format }: Props) => {
     labels: data.recorded.map((recorded) => new Date(recorded * 1000).toLocaleTimeString()),
     datasets: [
       {
-        // Real 'Tx', but shown as 'Rx'
         label: 'Tx',
-        data: data.packetsRx.map((rx) => rx.toString()),
+        data: data.packetsTx.map((tx) => tx.toString()),
         borderColor: colorMode === 'light' ? 'rgba(99, 179, 237, 1)' : 'rgba(190, 227, 248, 1)', // blue-300 - blue-100
         backgroundColor: colorMode === 'light' ? 'rgba(99, 179, 237, 0.3)' : 'rgba(190, 227, 248, 0.3)', // blue-300 - blue-100
         tension: 0.5,
@@ -105,9 +108,8 @@ const InterfaceChart = ({ data, format }: Props) => {
         fill: 'start',
       },
       {
-        // Real 'Tx', but shown as 'Rx'
         label: 'Rx',
-        data: data.packetsTx.map((tx) => tx.toString()),
+        data: data.packetsRx.map((rx) => rx.toString()),
         borderColor: colorMode === 'light' ? 'rgba(72, 187, 120, 1)' : 'rgba(154, 230, 180, 1)', // green-400 - green-200
         backgroundColor: colorMode === 'light' ? 'rgba(72, 187, 120, 0.3)' : 'rgba(154, 230, 180, 0.3)', // green-400 - green-200
         tension: 0.5,
@@ -158,9 +160,13 @@ const InterfaceChart = ({ data, format }: Props) => {
 
             callbacks: {
               label:
-                format === 'bytes'
+                format !== 'packets'
                   ? (context) => `${context.dataset.label}: ${context.formattedValue} ${unit}`
                   : undefined,
+              afterBody: (items) => {
+                const seconds = data.intervals[items[0]?.dataIndex];
+                return seconds > 0 ? `${format === 'rate' ? 'Average over' : 'Reporting interval:'} ${seconds}s` : 'Reporting interval unavailable';
+              },
             },
           },
         },
@@ -182,7 +188,7 @@ const InterfaceChart = ({ data, format }: Props) => {
             ticks: {
               color: colorMode === 'dark' ? 'white' : undefined,
               callback:
-                format === 'bytes'
+                format !== 'packets'
                   ? (tickValue) => `${dataTick(tickValue)} ${unit}`
                   : (tickValue) => (typeof tickValue === 'number' ? packetsTick(tickValue) : tickValue),
             },
@@ -193,7 +199,7 @@ const InterfaceChart = ({ data, format }: Props) => {
           intersect: true,
         },
       }}
-      data={format === 'bytes' ? bytesPoints : packetPoints}
+      data={format !== 'packets' ? bytesPoints : packetPoints}
     />
   );
 };
