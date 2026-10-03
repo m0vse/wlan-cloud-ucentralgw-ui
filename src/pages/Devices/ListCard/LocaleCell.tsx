@@ -4,6 +4,7 @@ import { Box, IconButton, Text, Tooltip, useClipboard } from '@chakra-ui/react';
 import ReactCountryFlag from 'react-country-flag';
 import { useTranslation } from 'react-i18next';
 import { DeviceWithStatus } from 'hooks/Network/Devices';
+import { getDisplayCountry } from 'helpers/ipCountry';
 
 const ICON_STYLE = { width: '24px', height: '24px', borderRadius: '20px' };
 
@@ -14,12 +15,13 @@ type Props = {
 const DeviceLocaleCell = ({ device }: Props) => {
   const { t } = useTranslation();
   const copy = useClipboard(device.ipAddress);
+  const country = getDisplayCountry(device.ipAddress, device.locale);
 
   return (
-    <Tooltip label={`${device.locale !== '' ? `${device.locale} - ` : ''}${device.ipAddress}`} placement="top">
+    <Tooltip label={`${country !== '' ? `${country} - ` : ''}${device.ipAddress}`} placement="top">
       <Box w="100%" display="flex">
-        {device.locale !== '' && device.ipAddress !== '' && (
-          <ReactCountryFlag style={ICON_STYLE} countryCode={device.locale} svg />
+        {country !== '' && device.ipAddress !== '' && (
+          <ReactCountryFlag style={ICON_STYLE} countryCode={country} svg />
         )}
         <Tooltip
           label={copy.hasCopied ? `${t('common.copied')}!` : t('common.copy')}

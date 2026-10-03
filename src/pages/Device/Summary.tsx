@@ -24,6 +24,7 @@ import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import COUNTRY_LIST from 'constants/countryList';
 import { compactDate, compactSecondsToDetailed } from 'helpers/dateFormatting';
 import { bytesString, getRevision, uppercaseFirstLetter } from 'helpers/stringHelper';
+import { getDisplayCountry } from 'helpers/ipCountry';
 import { useGetDevice, useGetDeviceStatus } from 'hooks/Network/Devices';
 import { useGetDeviceLastStats } from 'hooks/Network/Statistics';
 
@@ -40,6 +41,7 @@ const DeviceSummary = ({ serialNumber }: Props) => {
   const getDevice = useGetDevice({ serialNumber });
   const getStatus = useGetDeviceStatus({ serialNumber });
   const getStats = useGetDeviceLastStats({ serialNumber });
+  const country = getDisplayCountry(getStatus.data?.ipAddress, getDevice.data?.locale);
 
   const getMemory = () => {
     if (getStats.data?.unit?.memory) {
@@ -141,12 +143,12 @@ const DeviceSummary = ({ serialNumber }: Props) => {
               <Heading size="sm">{t('common.locale')}:</Heading>
             </GridItem>
             <GridItem colSpan={1}>
-              {!getDevice.data?.locale || getDevice.data?.locale === '' ? (
+              {country === '' ? (
                 '-'
               ) : (
                 <Box mr={2}>
-                  <ReactCountryFlag style={ICON_STYLE} countryCode={getDevice.data.locale} svg />
-                  {COUNTRY_LIST.find(({ value }) => value === getDevice.data.locale)?.label}
+                  <ReactCountryFlag style={ICON_STYLE} countryCode={country} svg />
+                  {COUNTRY_LIST.find(({ value }) => value === country)?.label}
                 </Box>
               )}
               <LocationDisplayButton serialNumber={serialNumber} />
