@@ -14,7 +14,7 @@ export type TrafficSeries = {
 export const wirelessReadings = (state: DeviceStatistics): Record<string, Reading> => {
   const readings: Record<string, Reading> = {};
   for (const iface of state.interfaces ?? []) for (const ssid of iface.ssids ?? []) {
-    if (!ssid.counters || !ssid.bssid || !ssid.phy) continue;
+    if (!ssid.counters || !ssid.bssid || !ssid.phy || typeof ssid.ssid !== 'string' || !ssid.ssid.trim()) continue;
     const key = `ssid:${ssid.bssid.toLowerCase()}`;
     if (readings[key]) continue;
     const radio = state.radios?.find((r) => r.phy === ssid.phy);

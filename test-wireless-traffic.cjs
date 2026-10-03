@@ -34,6 +34,19 @@ assert.ok(Number.isNaN(result.series['radio:pci-radio'].tx[0]));
 assert.deepEqual(result.series['ssid:a'].intervals, [90]);
 const missing = state([{ ...bss('a', 1), counters: undefined }]);
 assert.deepEqual(wirelessReadings(missing), {});
+for (const name of [null, undefined, '', '   ']) {
+  const unnamed = state([{ ...bss('a', 1), ssid: name }]);
+  assert.deepEqual(wirelessReadings(unnamed), {});
+  assert.deepEqual(wirelessTraffic([{ recorded: 0, data: unnamed }]).labels, {});
+}
+const startsAfterCac = wirelessTraffic([
+  { recorded: 0, data: state([{ ...bss('a', 100), ssid: null }]) },
+  { recorded: 60, data: first },
+  { recorded: 120, data: second },
+]);
+assert.match(startsAfterCac.labels['ssid:a'], /Phil/);
+assert.ok(Number.isNaN(startsAfterCac.series['ssid:a'].tx[0]));
+assert.equal(startsAfterCac.series['ssid:a'].tx[1], 300);
 const ui = fs.readFileSync('./src/pages/Device/StatisticsCard/index.tsx', 'utf8');
 assert.match(ui, /parsedData.labels\[v\] \?\? interfaceNameLabel\(v\)/);
 console.log('PASS: separate BSSID/radio series, real 6G labels, deduplication, counter resets, missing reports and variable intervals');
