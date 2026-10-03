@@ -15,10 +15,15 @@ for (const seconds of [0, -1, NaN, Infinity, undefined]) assert.equal(trafficRat
 for (const bytes of [-1, NaN, Infinity]) assert.equal(trafficRate(bytes, 10), null);
 assert.deepEqual(rateScale(800e6), { factor: 1e6, unit: 'Mbit/s' });
 assert.deepEqual(rateScale(1e9), { factor: 1e9, unit: 'Gbit/s' });
+for (const rate of [0, 1, 500, 20000, 999999])
+  assert.deepEqual(rateScale(rate), { factor: 1000, unit: 'kbit/s' });
+assert.deepEqual(rateScale(1e6), { factor: 1e6, unit: 'Mbit/s' });
 const chart = fs.readFileSync('./src/pages/Device/StatisticsCard/InterfaceChart.tsx', 'utf8');
 assert.match(chart, /label: 'Tx',\s+data: format === 'rate' \? txRates/);
 assert.match(chart, /label: 'Rx',\s+data: format === 'rate' \? rxRates/);
 assert.match(chart, /Average over/);
+assert.match(chart, /suggestedMax: format === 'rate' \? 1/);
+assert.match(chart, /maximumFractionDigits: 3/);
 assert.match(fs.readFileSync('./src/pages/Device/StatisticsCard/index.tsx', 'utf8'), /'packets'>\('rate'\)/);
 console.log('PASS: interval-based bit rates, invalid intervals, rate scaling, default mode and Tx/Rx direction');
 const counters = { tx_bytes: 3.75e9, rx_bytes: 1e8, tx_packets: 100, rx_packets: 10 };

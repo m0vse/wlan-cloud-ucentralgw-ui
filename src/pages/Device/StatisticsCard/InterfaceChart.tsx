@@ -124,7 +124,7 @@ const InterfaceChart = ({ data, format }: Props) => {
       const temp = String(value);
 
       if (temp.includes('.')) {
-        return Number(temp).toFixed(1);
+        return Number(temp).toLocaleString(undefined, { maximumFractionDigits: 3 });
       }
 
       return temp;
@@ -182,6 +182,7 @@ const InterfaceChart = ({ data, format }: Props) => {
           },
           y: {
             beginAtZero: true,
+            suggestedMax: format === 'rate' ? 1 : undefined,
             grid: {
               color: colorMode === 'dark' ? 'white' : undefined,
             },
