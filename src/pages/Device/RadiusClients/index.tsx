@@ -7,6 +7,7 @@ import RadiusClientModal from './Modal';
 import DeviceRadiusClientsTable from './Table';
 import { compactSecondsToDetailed } from 'helpers/dateFormatting';
 import { parseDbm } from 'helpers/stringHelper';
+import { operatingBand } from 'helpers/operatingBand';
 import { useGetDeviceRadiusSessions } from 'hooks/Network/Radius';
 import { DeviceStatistics, useGetDeviceLastStats } from 'hooks/Network/Statistics';
 
@@ -19,8 +20,8 @@ const parseRadios = (t: (str: string) => string, data: DeviceStatistics) => {
         radios.push({
           recorded: 0,
           index: i,
-          band: radio.band?.[0],
-          deductedBand: radio.channel && radio.channel > 16 ? '5G' : '2G',
+          band: operatingBand(radio),
+          deductedBand: '-',
           channel: radio.channel,
           channelWidth: radio.channel_width,
           noise: radio.noise ? parseDbm(radio.noise) : '-',

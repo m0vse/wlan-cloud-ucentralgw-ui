@@ -10,6 +10,7 @@ import { CardHeader } from 'components/Containers/Card/CardHeader';
 import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import { compactSecondsToDetailed } from 'helpers/dateFormatting';
 import { parseDbm } from 'helpers/stringHelper';
+import { operatingBand } from 'helpers/operatingBand';
 import { DeviceStatistics, useGetDeviceNewestStats, useGetMacOuis } from 'hooks/Network/Statistics';
 
 type Props = {
@@ -43,8 +44,8 @@ const parseRadios = (_: (str: string) => string, data: { data: DeviceStatistics;
         radios.push({
           recorded: data.recorded,
           index: i,
-          band: radio.band?.[0],
-          deductedBand: radio.channel && radio.channel > 16 ? '5G' : '2G',
+          band: operatingBand(radio),
+          deductedBand: '-',
           channel: radio.channel,
           channelWidth: radio.channel_width,
           noise,
