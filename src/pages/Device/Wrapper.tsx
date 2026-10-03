@@ -29,6 +29,7 @@ import RestrictionsCard from './RestrictionsCard';
 import DeviceStatisticsCard from './StatisticsCard';
 import DeviceSummary from './Summary';
 import WifiAnalysisCard from './WifiAnalysis';
+import NeighbourCoverage from './NeighbourCoverage';
 import { DeleteButton } from 'components/Buttons/DeleteButton';
 import DeviceActionDropdown from 'components/Buttons/DeviceActionDropdown';
 import { RefreshButton } from 'components/Buttons/RefreshButton';
@@ -336,6 +337,7 @@ const DevicePageWrapper = ({ serialNumber }: Props) => {
           <DeviceDetails serialNumber={serialNumber} />
           <DeviceStatisticsCard serialNumber={serialNumber} />
           {getDevice.data?.deviceType === 'ap' ? <WifiAnalysisCard serialNumber={serialNumber} /> : null}
+          {getDevice.data?.deviceType === 'ap' ? <NeighbourCoverage serialNumber={serialNumber} /> : null}
           {getDevice.data?.deviceType === 'switch' ? <SwitchPortExamination serialNumber={serialNumber} /> : null}
           <DeviceLogsCard serialNumber={serialNumber} />
           {getDevice.data && getDevice.data?.hasRADIUSSessions > 0 ? (
