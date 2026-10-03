@@ -30,6 +30,7 @@ import DeviceStatisticsCard from './StatisticsCard';
 import DeviceSummary from './Summary';
 import WifiAnalysisCard from './WifiAnalysis';
 import NeighbourCoverage from './NeighbourCoverage';
+import TopologyWarning from './TopologyWarning';
 import { DeleteButton } from 'components/Buttons/DeleteButton';
 import DeviceActionDropdown from 'components/Buttons/DeviceActionDropdown';
 import { RefreshButton } from 'components/Buttons/RefreshButton';
@@ -324,6 +325,7 @@ const DevicePageWrapper = ({ serialNumber }: Props) => {
       <ExportStatsModal serialNumber={serialNumber} modalProps={exportModalProps} />
       {scriptModal.modal}
       <Box mt={isCompact ? '0px' : '68px'}>
+        <TopologyWarning serialNumber={serialNumber} enabled={getDevice.data?.deviceType === 'ap'} connected={getStatus.data?.connected} onReboot={rebootModalProps.onOpen} />
         <Masonry
           breakpointCols={{
             default: 2,

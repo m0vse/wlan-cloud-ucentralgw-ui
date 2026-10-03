@@ -22,6 +22,7 @@ const cell = fs.readFileSync('src/pages/Devices/ListCard/DeviceNameCell.tsx', 'u
 assert(cell.includes('useGetTag({ serialNumber: device.serialNumber })'));
 assert(cell.includes('tag.data?.name?.trim()'));
 assert(cell.includes(': <span>-</span>'));
+assert(cell.includes('Reboot required'));
 assert(!cell.includes('dangerouslySetInnerHTML'));
 console.log('PASS: AP Name column ordering and inventory-name rendering checks');
 const searchSource = fs.readFileSync('src/helpers/apNameSearch.ts', 'utf8');
