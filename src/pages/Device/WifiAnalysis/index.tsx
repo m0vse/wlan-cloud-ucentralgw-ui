@@ -11,13 +11,15 @@ import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import { compactSecondsToDetailed } from 'helpers/dateFormatting';
 import { parseDbm } from 'helpers/stringHelper';
 import { operatingBand } from 'helpers/operatingBand';
+import { radioInDfs } from 'helpers/radioDfs';
+import { HealthCheck, useGetHealthChecks } from 'hooks/Network/HealthChecks';
 import { DeviceStatistics, useGetDeviceNewestStats, useGetMacOuis } from 'hooks/Network/Statistics';
 
 type Props = {
   serialNumber: string;
 };
 
-const parseRadios = (_: (str: string) => string, data: { data: DeviceStatistics; recorded: number }) => {
+const parseRadios = (_: (str: string) => string, data: { data: DeviceStatistics; recorded: number; UUID?: string }, health: HealthCheck[] = []) => {
   const radios: ParsedRadio[] = [];
   if (data.data.radios) {
     for (let i = 0; i < data.data.radios.length; i += 1) {
@@ -49,7 +51,7 @@ const parseRadios = (_: (str: string) => string, data: { data: DeviceStatistics;
           channel: radio.channel,
           channelWidth: radio.channel_width,
           noise,
-          txPower: radio.tx_power ?? '-',
+          txPower: radioInDfs(radio.phy, data.recorded, health, data.UUID) ? 'DFS' : radio.tx_power ?? '-',
           activeMs,
           busyMs,
           receiveMs,
@@ -118,19 +120,20 @@ const WifiAnalysisCard = ({ serialNumber }: Props) => {
   const { t } = useTranslation();
   const [sliderIndex, setSliderIndex] = React.useState(0);
   const getStats = useGetDeviceNewestStats({ serialNumber, limit: 30 });
+  const getHealth = useGetHealthChecks({ serialNumber, limit: 100, refetchInterval: 30000 });
   const parsedData = React.useMemo(() => {
     if (!getStats.data) return undefined;
 
     const data: { radios: ParsedRadio[]; associations: ParsedAssociation[] }[] = [];
 
     for (const stats of getStats.data.data) {
-      const parsedRadios = parseRadios(t, stats);
+      const parsedRadios = parseRadios(t, stats, getHealth.data?.values);
       const parsedAssocations = parseAssociations(stats, parsedRadios);
       data.push({ radios: parsedRadios, associations: parsedAssocations });
     }
 
     return data.reverse();
-  }, [getStats.data]);
+  }, [getStats.data, getHealth.data]);
 
   const getOuis = useGetMacOuis({ macs: parsedData?.[sliderIndex]?.associations?.map((d) => d.station) });
   const ouiKeyValue = React.useMemo(() => {

@@ -21,16 +21,19 @@ export const useGetHealthChecks = ({
   serialNumber,
   limit,
   onError,
+  refetchInterval,
 }: {
   serialNumber?: string;
   limit: number;
   onError?: (e: AxiosError) => void;
+  refetchInterval?: number;
 }) =>
   useQuery(['healthchecks', serialNumber, { limit }], getHealthChecks(limit, serialNumber), {
     keepPreviousData: true,
     enabled: serialNumber !== undefined && serialNumber !== '',
     staleTime: 30000,
     onError,
+    refetchInterval,
   });
 
 const getHealthChecksBatch = (serialNumber?: string, start?: number, end?: number, limit?: number, offset?: number) =>
