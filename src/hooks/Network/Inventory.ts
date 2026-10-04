@@ -39,6 +39,7 @@ export type InventoryTag = {
   managementPolicy: string;
   modified: number;
   name: string;
+  description?: string;
   notes: Note[];
   qrCode: string;
   realMacAddress: string;

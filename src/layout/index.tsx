@@ -13,10 +13,12 @@ import LanguageSwitcher from 'components/LanguageSwitcher';
 import { RouteName } from 'models/Routes';
 import NotFoundPage from 'pages/NotFound';
 import routes from 'router/routes';
+import DeviceTitle from 'pages/Device/Title';
 
 const Layout = () => {
   const { t } = useTranslation();
   const location = useLocation();
+  const deviceSerial = location.pathname.match(/^\/devices\/([^/]+)\/?$/)?.[1]?.toLowerCase();
   const { colorMode } = useColorMode();
   const [isSidebarOpen, { toggle: toggleSidebar }] = useBoolean(false);
   document.documentElement.dir = 'ltr';
@@ -96,7 +98,8 @@ const Layout = () => {
       >
         <SidebarDevices />
       </Sidebar>
-      <Navbar toggleSidebar={toggleSidebar} languageSwitcher={<LanguageSwitcher />} activeRoute={activeRoute} />
+      <Navbar toggleSidebar={toggleSidebar} languageSwitcher={<LanguageSwitcher />} activeRoute={activeRoute}
+        title={deviceSerial ? <DeviceTitle serialNumber={deviceSerial} /> : undefined} />
       <PageContainer waitForUser>
         <Routes>{[...routeInstances, <Route path="*" element={<NotFoundPage />} key={uuid()} />]}</Routes>
       </PageContainer>

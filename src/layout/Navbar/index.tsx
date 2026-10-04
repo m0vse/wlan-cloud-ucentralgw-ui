@@ -27,6 +27,7 @@ import { useAuth } from 'contexts/AuthProvider';
 export type NavbarProps = {
   toggleSidebar: () => void;
   activeRoute?: string;
+  title?: React.ReactNode;
   languageSwitcher?: React.ReactNode;
   favoritesButton?: React.ReactNode;
   rightElements?: React.ReactNode;
@@ -35,6 +36,7 @@ export type NavbarProps = {
 export const Navbar = ({
   toggleSidebar,
   activeRoute,
+  title,
   languageSwitcher,
   favoritesButton,
   rightElements = null,
@@ -134,7 +136,7 @@ export const Navbar = ({
           justifyContent="center"
         >
           {isCompact && <HamburgerIcon w="24px" h="24px" onClick={toggleSidebar} mr={10} mt={1} />}
-          {activeRoute && activeRoute.length > 0 ? (
+          {title ? <Box mr={4} minW={0}>{title}</Box> : activeRoute && activeRoute.length > 0 ? (
             <Heading size="lg" mr={4}>
               {activeRoute}
             </Heading>
