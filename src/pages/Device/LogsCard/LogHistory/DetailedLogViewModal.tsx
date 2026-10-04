@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import { Modal } from 'components/Modals/Modal';
 import { DeviceLog } from 'hooks/Network/DeviceLogs';
+import { deviceLogDetails } from 'helpers/deviceLogDetails';
 
 type Props = {
   modalProps: {
@@ -15,28 +16,14 @@ type Props = {
 
 const DetailedLogViewModal = ({ modalProps, log }: Props) => {
   const { t } = useTranslation();
-  const { hasCopied, onCopy, setValue } = useClipboard(JSON.stringify(log?.log ?? {}, null, 2));
+  const content = deviceLogDetails(log);
+  const { hasCopied, onCopy, setValue } = useClipboard(content);
 
   React.useEffect(() => {
-    if (log?.logType === 2) {
-      setValue(JSON.stringify(log.data ?? {}, null, 2));
-    } else {
-      setValue(JSON.stringify(log?.log ?? {}, null, 2));
-    }
-  }, [log]);
+    setValue(content);
+  }, [content, setValue]);
 
   if (!log) return null;
-
-  const getCodeContent = () => {
-    if (log.logType === 2) {
-      if (log.data.info !== undefined && Array.isArray(log.data.info)) {
-        return log.data.info.map((v) => v).join('\n');
-      }
-      return JSON.stringify(log.data, null, 2);
-    }
-
-    return log.log;
-  };
 
   return (
     <Modal
@@ -59,8 +46,8 @@ const DetailedLogViewModal = ({ modalProps, log }: Props) => {
         <Heading size="sm">
           {t('controller.devices.config_id')}: {log.UUID}
         </Heading>
-        <Code whiteSpace="pre-line" mt={2}>
-          {getCodeContent()}
+        <Code whiteSpace="pre-wrap" overflowWrap="anywhere" display="block" mt={2}>
+          {content}
         </Code>
       </Box>
     </Modal>
