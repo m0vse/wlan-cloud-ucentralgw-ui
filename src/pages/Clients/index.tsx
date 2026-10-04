@@ -12,7 +12,7 @@ import { normalizeMac, isPrivateMac, vendorFor, vendorColumnOrder } from './vend
 import { clientStatus, latestClients, statusColumnOrder } from './freshness';
 
 type AP = { apSerial: string; apName: string; entityId: string; entityName: string; venueId: string; venueName: string; apConnected: boolean };
-type Association = AP & { id: string; mac: string; vendor?: string; status?: string; freshness?: { label: string; color: string; reason: string }; ssid: string; bssid: string; band: string; channel?: number; ip: string; signal?: number; rxRate?: number; txRate?: number; startTime: number | null; endTime: number | null; lastSeen: number };
+type Association = AP & { id: string; mac: string; vendor?: string; status?: string; freshness?: { label: string; color: string; reason: string }; ssid: string; bssid: string; band: string; channel?: number; ip: string; ipv4Addresses?: string[]; ipv6Addresses?: string[]; signal?: number; rxRate?: number; txRate?: number; startTime: number | null; endTime: number | null; lastSeen: number };
 type Response = { rows: Association[]; aps: AP[]; errors: { apSerial: string; message: string }[]; generatedAt: number; historySamples: number };
 const date = (value: number | null) => value ? new Date(value * 1000).toLocaleString() : '—';
 const options = (aps: AP[], id: 'entityId' | 'venueId', name: 'entityName' | 'venueName') => Array.from(new Map(aps.filter((ap) => ap[id]).map((ap) => [ap[id], ap[name]])).entries()).sort((a, b) => a[1].localeCompare(b[1]));
@@ -35,7 +35,12 @@ const Clients = () => {
     { id: 'mac', accessorKey: 'mac', header: 'Client', cell: ({ row }) => <Text fontFamily="mono">{row.original.mac}</Text> },
     { id: 'vendor', accessorKey: 'vendor', header: 'Vendor' },
     { id: 'status', accessorKey: 'status', header: 'Status', cell: ({ row }) => <Tooltip label={row.original.freshness?.reason}><Badge colorScheme={row.original.freshness?.color}>{row.original.status}</Badge></Tooltip> },
-    { id: 'ip', accessorKey: 'ip', header: 'IP address', cell: ({ row }) => row.original.ip || '—' },
+    { id: 'ip', accessorKey: 'ip', header: 'IP address', cell: ({ row }) => {
+      const { ipv4Addresses, ipv6Addresses, ip } = row.original;
+      if (!ipv4Addresses && !ipv6Addresses) return ip || '—';
+      const lines = [ipv4Addresses, ipv6Addresses].filter((addresses) => addresses?.length);
+      return lines.length ? <Box>{lines.map((addresses, index) => <Text key={index} overflowWrap="anywhere">{addresses?.join(', ')}</Text>)}</Box> : '—';
+    } },
     { id: 'ssid', accessorKey: 'ssid', header: 'SSID' },
     { id: 'apName', accessorKey: 'apName', header: 'AP', cell: ({ row }) => <><Link as={RouterLink} to={`/devices/${row.original.apSerial}`}>{row.original.apName}</Link>{!row.original.apConnected && <Badge ml={2}>AP offline</Badge>}</> },
     { id: 'entityName', accessorKey: 'entityName', header: 'Entity' },
