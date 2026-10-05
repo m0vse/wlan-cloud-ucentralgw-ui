@@ -51,6 +51,7 @@ import { TraceModal } from 'components/Modals/TraceModal';
 import { WifiScanModal } from 'components/Modals/WifiScanModal';
 import DataCell from 'components/TableCells/DataCell';
 import NumberCell from 'components/TableCells/NumberCell';
+import { memoryHealthColor } from 'helpers/memoryHealth';
 import { DevicePlatform, DeviceWithStatus, useGetDeviceCount, useGetDevices } from 'hooks/Network/Devices';
 import { FirmwareAgeResponse, useGetFirmwareAges } from 'hooks/Network/Firmware';
 
@@ -81,7 +82,6 @@ const BADGE_COLORS: Record<string, string> = {
   SIMULATED: 'purple',
 };
 
-const SAGE_COMPATIBLES = new Set(['cambium-sage', 'cambium_e410', 'cambium_e410b']);
 
 const DeviceListCard = () => {
   const { t } = useTranslation();
@@ -364,12 +364,7 @@ const DeviceListCard = () => {
   const memoryCell = React.useCallback((device: DeviceWithStatus) => {
     if (!device.connected) return <Center>-</Center>;
 
-    const isSage = SAGE_COMPATIBLES.has(device.compatible);
-    const warningThreshold = isSage ? 75 : 60;
-    const criticalThreshold = isSage ? 90 : 85;
-    let colorScheme = 'red';
-    if (device.memoryUsed <= criticalThreshold) colorScheme = 'yellow';
-    if (device.memoryUsed <= warningThreshold) colorScheme = 'green';
+    const colorScheme = memoryHealthColor(device.memoryUsed);
 
     return (
       <Center>

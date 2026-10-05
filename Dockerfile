@@ -8,7 +8,7 @@ RUN npm install
 
 COPY . .
 
-RUN npm run build
+RUN node test-memory-health.cjs && npm run build
 
 FROM nginx:1.22.0-alpine AS runtime
 
