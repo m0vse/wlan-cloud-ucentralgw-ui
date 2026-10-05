@@ -19,10 +19,11 @@ import {
   Portal,
   useDisclosure,
 } from '@chakra-ui/react';
-import { ArrowCircleLeft } from '@phosphor-icons/react';
+import { ArrowCircleLeft, Buildings } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from 'contexts/AuthProvider';
+import { provisioningPortalUrl } from 'helpers/provisioningPortal';
 
 export type NavbarProps = {
   toggleSidebar: () => void;
@@ -155,6 +156,18 @@ export const Navbar = ({
             <Flex alignItems="center" flexDirection="row">
               {rightElements}
               {favoritesButton}
+              <Tooltip hasArrow label="Provisioning Portal">
+                <IconButton
+                  as="a"
+                  href={provisioningPortalUrl(window.location.origin)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Open Provisioning Portal in a new tab"
+                  variant="ghost"
+                  mr={1}
+                  icon={<Buildings size={20} />}
+                />
+              </Tooltip>
               <Tooltip hasArrow label={t('common.theme')}>
                 <IconButton
                   aria-label={t('common.theme')}
