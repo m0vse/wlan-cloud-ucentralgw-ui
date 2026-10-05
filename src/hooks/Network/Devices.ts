@@ -194,11 +194,19 @@ export const useGetDeviceStatus = ({
 }: {
   serialNumber?: string;
   onError?: (e: AxiosError) => void;
-}) =>
-  useQuery(['device', serialNumber, 'status'], () => getDeviceStatus(serialNumber), {
-    enabled: serialNumber !== undefined && serialNumber !== '',
+}) => {
+  const { isReady } = useEndpointStatus('owgw');
+  const canFetch = isReady && serialNumber !== undefined && serialNumber !== '';
+  const query = useQuery(['device', serialNumber, 'status'], () => getDeviceStatus(serialNumber), {
+    enabled: canFetch,
     onError,
   });
+  return {
+    ...query,
+    refetch: (...args: Parameters<typeof query.refetch>) =>
+      canFetch ? query.refetch(...args) : Promise.resolve(query),
+  };
+};
 
 export type DevicesStats = {
   averageConnectionTime: number;
@@ -245,23 +253,33 @@ export const useGetDeviceHealthChecks = ({
   serialNumber?: string;
   onError?: (e: AxiosError) => void;
   limit?: number;
-}) =>
-  useQuery(['device', serialNumber, 'healthchecks', { limit }], () => getDeviceHealthChecks(serialNumber, limit), {
-    enabled: serialNumber !== undefined && serialNumber !== '',
+}) => {
+  const { isReady } = useEndpointStatus('owgw');
+  const canFetch = isReady && serialNumber !== undefined && serialNumber !== '';
+  const query = useQuery(['device', serialNumber, 'healthchecks', { limit }], () => getDeviceHealthChecks(serialNumber, limit), {
+    enabled: canFetch,
     keepPreviousData: true,
     onError,
   });
+  return {
+    ...query,
+    refetch: (...args: Parameters<typeof query.refetch>) =>
+      canFetch ? query.refetch(...args) : Promise.resolve(query),
+  };
+};
 
 export const useGetDevice = ({ serialNumber, onClose }: { serialNumber?: string; onClose?: () => void }) => {
   const { t } = useTranslation();
   const toast = useToast();
 
-  return useQuery(
+  const { isReady } = useEndpointStatus('owgw');
+  const canFetch = isReady && serialNumber !== undefined && serialNumber !== '';
+  const query = useQuery(
     ['device', serialNumber],
     () => axiosGw.get(`device/${serialNumber}`).then(({ data }: { data: GatewayDevice }) => data),
     {
       staleTime: 60 * 1000,
-      enabled: serialNumber !== undefined && serialNumber !== '',
+      enabled: canFetch,
       onError: (e: AxiosError) => {
         if (!toast.isActive('gateway-device-fetching-error'))
           toast({
@@ -283,6 +301,11 @@ export const useGetDevice = ({ serialNumber, onClose }: { serialNumber?: string;
       },
     },
   );
+  return {
+    ...query,
+    refetch: (...args: Parameters<typeof query.refetch>) =>
+      canFetch ? query.refetch(...args) : Promise.resolve(query),
+  };
 };
 
 const deleteDevice = async (serialNumber: string) => axiosGw.delete(`device/${serialNumber}`);
