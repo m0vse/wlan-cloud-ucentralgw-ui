@@ -23,7 +23,7 @@ import { ArrowCircleLeft, Buildings } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from 'contexts/AuthProvider';
-import { provisioningPortalUrl } from 'helpers/provisioningPortal';
+import { openAuthenticatedProvisioningPortal } from 'helpers/provisioningPortal';
 
 export type NavbarProps = {
   toggleSidebar: () => void;
@@ -48,7 +48,7 @@ export const Navbar = ({
   const [scrolled, setScrolled] = useState(false);
   const breakpoint = useBreakpoint();
   const { colorMode, toggleColorMode } = useColorMode();
-  const { logout, user, avatar } = useAuth();
+  const { logout, user, avatar, token } = useAuth();
 
   const isCompact = breakpoint === 'base' || breakpoint === 'sm' || breakpoint === 'md';
 
@@ -158,10 +158,7 @@ export const Navbar = ({
               {favoritesButton}
               <Tooltip hasArrow label="Provisioning Portal">
                 <IconButton
-                  as="a"
-                  href={provisioningPortalUrl(window.location.origin)}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={() => openAuthenticatedProvisioningPortal(token)}
                   aria-label="Open Provisioning Portal in a new tab"
                   variant="ghost"
                   mr={1}

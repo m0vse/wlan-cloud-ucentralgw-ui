@@ -41,3 +41,19 @@ Here are the current default values:
 ```
 VITE_UCENTRALSEC_URL="https://ucentral.dpaas.arilia.com:16001"
 ```
+
+## Provisioning portal session handoff
+
+The navbar opens the provisioning UI on the same HTTPS host, port 8443, in a new tab.
+Both UIs must include the session-handoff change. The bearer session is sent only
+through a checked browser message to that exact tab and origin, never in a URL.
+The portal keeps it in tab-scoped storage and uses the existing server-side profile
+and permission checks. It disconnects its opener after receipt or a five-second
+timeout. Direct portal visits continue to use the normal login flow.
+
+Run the sender/receiver regression with the companion provisioning source:
+
+```sh
+PORTAL_SESSION_SOURCE=/path/to/wlan-cloud-owprov-ui/src/helpers/controllerSession.ts node test-portal-session.cjs
+node test-provisioning-portal.cjs
+```
