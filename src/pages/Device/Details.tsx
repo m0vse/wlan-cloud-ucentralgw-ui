@@ -10,9 +10,10 @@ import { CardHeader } from 'components/Containers/Card/CardHeader';
 import { compactDate } from 'helpers/dateFormatting';
 import { deviceInterfaceAddresses } from 'helpers/deviceInterfaceAddresses';
 import { useGetDevice, useGetDeviceStatus } from 'hooks/Network/Devices';
-import { useEndpointStatus, useGetProvUi } from 'hooks/Network/Endpoints';
+import { useGetProvUi } from 'hooks/Network/Endpoints';
 import { useGetTag } from 'hooks/Network/Inventory';
 import { useGetDeviceLastStats } from 'hooks/Network/Statistics';
+import { useEndpointStatus } from 'hooks/useEndpointStatus';
 
 type Props = {
   serialNumber: string;
