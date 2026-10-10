@@ -23,8 +23,10 @@ assert.deepEqual(rows, [
   { name: 'up1v101', ipv4: ['10.101.0.2'], ipv6: [], management: false },
 ]);
 assert.deepEqual(collect(undefined), []);
+assert.deepEqual(collect([null, { name: 'bad', ipv4: { addresses: '192.168.99.128' } }]), []);
 assert.equal(collect([{ name: 'up0v0', ipv4: { addresses: ['192.168.99.128'] } }], '203.0.113.1')[0].management, false);
 const details = fs.readFileSync('src/pages/Device/Details.tsx', 'utf8');
 assert.match(details, /Interface IP addresses/);
+assert.match(details, /gatewayReady \? serialNumber : undefined/);
 assert.match(details, /\.\.\.iface\.ipv4, \.\.\.iface\.ipv6/);
 console.log('PASS: interface IPv4/IPv6, management matching, deduplication, invalid-address filtering and missing data');

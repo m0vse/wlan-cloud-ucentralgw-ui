@@ -10,7 +10,7 @@ import { CardHeader } from 'components/Containers/Card/CardHeader';
 import { compactDate } from 'helpers/dateFormatting';
 import { deviceInterfaceAddresses } from 'helpers/deviceInterfaceAddresses';
 import { useGetDevice, useGetDeviceStatus } from 'hooks/Network/Devices';
-import { useGetProvUi } from 'hooks/Network/Endpoints';
+import { useEndpointStatus, useGetProvUi } from 'hooks/Network/Endpoints';
 import { useGetTag } from 'hooks/Network/Inventory';
 import { useGetDeviceLastStats } from 'hooks/Network/Statistics';
 
@@ -23,8 +23,9 @@ const DeviceDetails = ({ serialNumber }: Props) => {
   const getProvUi = useGetProvUi();
   const getDevice = useGetDevice({ serialNumber });
   const getTag = useGetTag({ serialNumber });
+  const { isReady: gatewayReady } = useEndpointStatus('owgw');
   const status = useGetDeviceStatus({ serialNumber });
-  const stats = useGetDeviceLastStats({ serialNumber });
+  const stats = useGetDeviceLastStats({ serialNumber: gatewayReady ? serialNumber : undefined });
   const addresses = deviceInterfaceAddresses(stats.data?.interfaces, status.data?.ipAddress);
   const { isOpen: isShowingPassword, onToggle: onTogglePassword } = useDisclosure();
   const { hasCopied, onCopy, setValue } = useClipboard(

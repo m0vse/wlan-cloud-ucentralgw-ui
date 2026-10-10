@@ -32,9 +32,12 @@ export const usableInterfaceAddress = (value: unknown): string | null => {
 
 export const deviceInterfaceAddresses = (interfaces: AddressedInterface[] | undefined, peerIp?: string) => {
   const peer = usableInterfaceAddress(peerIp);
-  return (interfaces ?? []).flatMap((iface) => {
-    const ipv4 = [...new Set((iface.ipv4?.addresses ?? []).map(usableInterfaceAddress).filter((a): a is string => !!a))];
-    const ipv6 = [...new Set((iface.ipv6?.addresses ?? []).map(usableInterfaceAddress).filter((a): a is string => !!a))];
+  return (Array.isArray(interfaces) ? interfaces : []).flatMap((iface) => {
+    if (!iface || typeof iface !== 'object') return [];
+    const v4 = Array.isArray(iface.ipv4?.addresses) ? iface.ipv4.addresses : [];
+    const v6 = Array.isArray(iface.ipv6?.addresses) ? iface.ipv6.addresses : [];
+    const ipv4 = [...new Set(v4.map(usableInterfaceAddress).filter((a): a is string => !!a))];
+    const ipv6 = [...new Set(v6.map(usableInterfaceAddress).filter((a): a is string => !!a))];
     return ipv4.length || ipv6.length
       ? [{ name: iface.name || 'Interface', ipv4, ipv6, management: !!peer && [...ipv4, ...ipv6].includes(peer) }]
       : [];
