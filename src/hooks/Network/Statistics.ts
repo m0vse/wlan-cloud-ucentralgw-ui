@@ -20,6 +20,8 @@ export type DeviceLinkState = {
   speed?: number;
 };
 export type DeviceInterfaceStatistics = {
+  ipv4?: { addresses?: string[] };
+  ipv6?: { addresses?: string[] };
   clients: {
     ipv4_addresses?: string[];
     ipv6_addresses?: string[];

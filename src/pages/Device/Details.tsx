@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Button, Grid, GridItem, Heading, Link, Spacer, useClipboard, useDisclosure } from '@chakra-ui/react';
+import { Button, Grid, GridItem, Heading, Link, Spacer, Text, useClipboard, useDisclosure } from '@chakra-ui/react';
 import { Eye, EyeSlash, ListBullets } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import ViewCapabilitiesModal from './ViewCapabilitiesModal';
@@ -8,9 +8,11 @@ import { Card } from 'components/Containers/Card';
 import { CardBody } from 'components/Containers/Card/CardBody';
 import { CardHeader } from 'components/Containers/Card/CardHeader';
 import { compactDate } from 'helpers/dateFormatting';
-import { useGetDevice } from 'hooks/Network/Devices';
+import { deviceInterfaceAddresses } from 'helpers/deviceInterfaceAddresses';
+import { useGetDevice, useGetDeviceStatus } from 'hooks/Network/Devices';
 import { useGetProvUi } from 'hooks/Network/Endpoints';
 import { useGetTag } from 'hooks/Network/Inventory';
+import { useGetDeviceLastStats } from 'hooks/Network/Statistics';
 
 type Props = {
   serialNumber: string;
@@ -21,6 +23,9 @@ const DeviceDetails = ({ serialNumber }: Props) => {
   const getProvUi = useGetProvUi();
   const getDevice = useGetDevice({ serialNumber });
   const getTag = useGetTag({ serialNumber });
+  const status = useGetDeviceStatus({ serialNumber });
+  const stats = useGetDeviceLastStats({ serialNumber });
+  const addresses = deviceInterfaceAddresses(stats.data?.interfaces, status.data?.ipAddress);
   const { isOpen: isShowingPassword, onToggle: onTogglePassword } = useDisclosure();
   const { hasCopied, onCopy, setValue } = useClipboard(
     getDevice.data?.devicePassword !== undefined && getDevice.data?.devicePassword !== ''
@@ -67,6 +72,19 @@ const DeviceDetails = ({ serialNumber }: Props) => {
             <Heading size="sm">MAC:</Heading>
           </GridItem>
           <GridItem colSpan={1}>{getDevice.data?.macAddress}</GridItem>
+          <GridItem colSpan={1} alignContent="center">
+            <Heading size="sm">Interface IP addresses:</Heading>
+          </GridItem>
+          <GridItem colSpan={1} overflowWrap="anywhere">
+            {addresses.length ? addresses.map((iface) => (
+              <React.Fragment key={iface.name}>
+                <Text fontSize="sm" fontWeight="semibold">
+                  {iface.name}{iface.management ? ' (management)' : ''}
+                </Text>
+                {[...iface.ipv4, ...iface.ipv6].map((address) => <Text key={address} fontSize="sm">{address}</Text>)}
+              </React.Fragment>
+            )) : <Text fontSize="sm">{stats.isLoading ? 'Loading…' : 'Not reported'}</Text>}
+          </GridItem>
           <GridItem colSpan={1} alignContent="center" alignItems="center">
             <Heading size="sm">{t('common.password')}</Heading>
           </GridItem>
