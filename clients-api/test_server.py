@@ -12,6 +12,58 @@ def sample(recorded, clients, partial=False):
 
 
 class ClientsTests(unittest.TestCase):
+    def mlo_client(self):
+        return {"station": "02:00:00:00:10:00", "authorized": True, "connected": 20,
+                "mlo": {"mld_address": "02:00:00:00:10:00", "counters_scope": "mld", "links": [
+                    {"link_id": 0, "address": "02:00:00:00:11:00", "bssid": "02:00:00:00:21:00", "frequency": 5765, "channel": 153},
+                    {"link_id": 1, "address": "02:00:00:00:12:00", "bssid": "02:00:00:00:22:00", "frequency": 6135, "channel": 37}]}}
+
+    def test_negotiated_mlo_single_peer_and_link_details(self):
+        client = self.mlo_client()
+        state = sample(100, [client])["data"]
+        ssid = state["interfaces"][0]["ssids"][0]
+        state["interfaces"][0]["ssids"].append(dict(ssid, bssid="02:00:00:00:22:00"))
+        rows = server.sessions([{"recorded": 100, "data": state}], {"apSerial": "test"})
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["band"], "MLO")
+        self.assertIsNone(rows[0]["channel"])
+        self.assertEqual([link["band"] for link in rows[0]["mlo"]["links"]], ["5G", "6G"])
+        self.assertEqual(rows[0]["startTime"], 80)
+
+    def test_ap_mlo_capability_does_not_label_ordinary_client(self):
+        state = sample(100, [{"station": "aa:bb"}])["data"]
+        state["radios"][0]["mlo_links"] = [{"link_id": 0}, {"link_id": 1}]
+        row = next(iter(server.associations(state).values()))
+        self.assertEqual(row["band"], "6G")
+        self.assertNotIn("mlo", row)
+
+    def test_invalid_mlo_metadata_falls_back_without_losing_client(self):
+        import copy
+        for mutate in (lambda m: m.update(mld_address="02:00:00:00:00:01"),
+                       lambda m: m.update(counters_scope="link"),
+                       lambda m: m.update(links=m["links"][:1]),
+                       lambda m: m["links"][1].update(link_id=0),
+                       lambda m: m["links"][1].update(address=m["links"][0]["address"]),
+                       lambda m: m["links"][1].update(frequency=None),
+                       lambda m: m["links"][1].update(bssid="bad"),
+                       lambda m: m["links"][1].update(link_id=True)):
+            client = copy.deepcopy(self.mlo_client())
+            mutate(client["mlo"])
+            row = next(iter(server.associations(sample(100, [client])["data"]).values()))
+            self.assertEqual(row["band"], "6G")
+            self.assertNotIn("mlo", row)
+
+    def test_mlo_link_change_does_not_invent_reassociation(self):
+        import copy
+        client = self.mlo_client()
+        next_client = copy.deepcopy(client)
+        next_client["connected"] = 30
+        next_client["mlo"]["links"][1]["frequency"] = 6275
+        rows = server.sessions([sample(100, [client]), sample(110, [next_client])], {"apSerial": "test"})
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["mlo"]["links"][1]["frequency"], 6275)
+        self.assertEqual(rows[0]["lastSeen"], 110)
+
     def test_authentication_precedes_any_data_access(self):
         for value in (None, "", "Basic abc", "Bearer bad\nheader"):
             with patch.object(server, "fetch") as fetch:
@@ -69,6 +121,17 @@ class ClientsTests(unittest.TestCase):
         rows = server.sessions([{"recorded": 100, "data": data}], {"apSerial": "test"})
         self.assertEqual(len(rows), 2)
         self.assertEqual([r["band"] for r in rows], ["6G", "6G"])
+
+    def test_logical_radio_reference_wins_over_shared_phy(self):
+        data = sample(100, [{"station": "aa:bb"}])["data"]
+        data["radios"] = [{"phy": "phy1", "frequency": [5765], "channel": 153},
+                          {"phy": "phy1", "frequency": [6135], "channel": 37}]
+        ssid = data["interfaces"][0]["ssids"][0]
+        ssid.update(phy="phy1", radio={"$ref": "#/radios/1"})
+        row = next(iter(server.associations(data).values()))
+        self.assertEqual((row["band"], row["channel"]), ("6G", 37))
+        ssid["radio"] = {"$ref": "#/radios/99"}
+        self.assertEqual(next(iter(server.associations(data).values()))["band"], "5G")
 
     def test_existing_operating_frequency_wins_over_multiband_capabilities(self):
         for frequency, expected in ((2462, "2G"), (5745, "5G"), (6135, "6G"), (60480, "60G")):

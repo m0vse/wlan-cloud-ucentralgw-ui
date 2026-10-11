@@ -1,5 +1,12 @@
 // A recent report is an observation, not proof of a live association.
 export const STALE_SECONDS = 600;
+export function matchesClientBand(row, band) {
+  return !band || row.band === band || (row.band === 'MLO' && row.mlo?.links?.some((link) => link.band === band));
+}
+export function clientSearchText(row) {
+  return [row.mac, row.vendor, row.ip, row.ssid, row.apName, row.apSerial,
+    ...(row.mlo?.links ?? []).flatMap((link) => [link.mac, link.bssid, link.band])].join(' ').toLowerCase();
+}
 export function clientStatus(row, now, refreshFailed = false) {
   if (row.endTime != null) return { label: 'Historic', color: 'gray', reason: 'Association ended in a later AP report.' };
   if (refreshFailed) return { label: 'Stale', color: 'orange', reason: 'Controller refresh failed; showing the previous report.' };

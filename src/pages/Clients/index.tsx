@@ -9,10 +9,11 @@ import { DataGrid } from 'components/DataTables/DataGrid';
 import { DataGridColumn, useDataGrid } from 'components/DataTables/DataGrid/useDataGrid';
 import { axiosGw } from 'constants/axiosInstances';
 import { normalizeMac, isPrivateMac, vendorFor, vendorColumnOrder } from './vendors';
-import { clientStatus, latestClients, statusColumnOrder } from './freshness';
+import { clientStatus, latestClients, statusColumnOrder, matchesClientBand, clientSearchText } from './freshness';
+import { MloLinks, Mlo } from './MloLinks';
 
 type AP = { apSerial: string; apName: string; entityId: string; entityName: string; venueId: string; venueName: string; apConnected: boolean };
-type Association = AP & { id: string; mac: string; vendor?: string; status?: string; freshness?: { label: string; color: string; reason: string }; ssid: string; bssid: string; band: string; channel?: number; ip: string; ipv4Addresses?: string[]; ipv6Addresses?: string[]; signal?: number; rxRate?: number; txRate?: number; startTime: number | null; endTime: number | null; lastSeen: number };
+type Association = AP & { id: string; mac: string; vendor?: string; status?: string; freshness?: { label: string; color: string; reason: string }; ssid: string; bssid: string; band: string; mlo?: Mlo; channel?: number; ip: string; ipv4Addresses?: string[]; ipv6Addresses?: string[]; signal?: number; rxRate?: number; txRate?: number; startTime: number | null; endTime: number | null; lastSeen: number };
 type Response = { rows: Association[]; aps: AP[]; errors: { apSerial: string; message: string }[]; generatedAt: number; historySamples: number };
 const date = (value: number | null) => value ? new Date(value * 1000).toLocaleString() : '—';
 const options = (aps: AP[], id: 'entityId' | 'venueId', name: 'entityName' | 'venueName') => Array.from(new Map(aps.filter((ap) => ap[id]).map((ap) => [ap[id], ap[name]])).entries()).sort((a, b) => a[1].localeCompare(b[1]));
@@ -45,7 +46,7 @@ const Clients = () => {
     { id: 'apName', accessorKey: 'apName', header: 'AP', cell: ({ row }) => <><Link as={RouterLink} to={`/devices/${row.original.apSerial}`}>{row.original.apName}</Link>{!row.original.apConnected && <Badge ml={2}>AP offline</Badge>}</> },
     { id: 'entityName', accessorKey: 'entityName', header: 'Entity' },
     { id: 'venueName', accessorKey: 'venueName', header: 'Venue' },
-    { id: 'band', accessorKey: 'band', header: 'Band' },
+    { id: 'band', accessorKey: 'band', header: 'Band', cell: ({ row }) => row.original.band === 'MLO' && row.original.mlo ? <MloLinks mlo={row.original.mlo} /> : row.original.band },
     { id: 'channel', accessorKey: 'channel', header: 'Channel', cell: ({ row }) => row.original.channel ?? '—' },
     { id: 'signal', accessorKey: 'signal', header: 'Signal', cell: ({ row }) => row.original.signal == null ? '—' : `${row.original.signal} dBm` },
     { id: 'startTime', accessorKey: 'startTime', header: 'Start', cell: ({ row }) => date(row.original.startTime) },
@@ -75,14 +76,14 @@ const Clients = () => {
   const rows: Association[] = latestClients(query.data?.rows ?? [], historic).map((row: Association) => {
     const freshness = clientStatus(row, now, query.isError);
     return { ...row, vendor: vendorFor(row.mac, vendors.data ?? {}), status: freshness.label, freshness };
-  }).filter((row: Association) => (!entity || row.entityId === entity) && (!venue || row.venueId === venue) && (!ap || row.apSerial === ap) && (!band || row.band === band) && (!search || [row.mac, row.vendor, row.ip, row.ssid, row.apName, row.apSerial].join(' ').toLowerCase().includes(search.toLowerCase())));
+  }).filter((row: Association) => (!entity || row.entityId === entity) && (!venue || row.venueId === venue) && (!ap || row.apSerial === ap) && matchesClientBand(row, band) && (!search || clientSearchText(row).includes(search.toLowerCase())));
   if (!root) return <Alert status="warning"><AlertIcon />Root access required</Alert>;
   return <Box>
     <Card mb={4}><CardBody><Flex gap={3} wrap="wrap">
       <FormControl width="auto" minW="170px" flex="1"><FormLabel fontSize="sm">Entity</FormLabel><Select value={entity} onChange={(event) => { setEntity(event.target.value); setVenue(''); setAp(''); }}><option value="">All entities</option>{options(aps, 'entityId', 'entityName').map(([id, name]) => <option key={id} value={id}>{name}</option>)}</Select></FormControl>
       <FormControl width="auto" minW="170px" flex="1"><FormLabel fontSize="sm">Venue</FormLabel><Select value={venue} onChange={(event) => { setVenue(event.target.value); setAp(''); }}><option value="">All venues</option>{options(aps.filter((item) => !entity || item.entityId === entity), 'venueId', 'venueName').map(([id, name]) => <option key={id} value={id}>{name}</option>)}</Select></FormControl>
       <FormControl width="auto" minW="170px" flex="1"><FormLabel fontSize="sm">AP</FormLabel><Select value={ap} onChange={(event) => setAp(event.target.value)}><option value="">All APs</option>{scopedAps.map((item) => <option key={item.apSerial} value={item.apSerial}>{item.apName}</option>)}</Select></FormControl>
-      <FormControl width="120px"><FormLabel fontSize="sm">Band</FormLabel><Select value={band} onChange={(event) => setBand(event.target.value)}><option value="">All bands</option>{['2G', '5G', '6G', 'Unknown'].map((value) => <option key={value} value={value}>{value}</option>)}</Select></FormControl>
+      <FormControl width="120px"><FormLabel fontSize="sm">Band</FormLabel><Select value={band} onChange={(event) => setBand(event.target.value)}><option value="">All bands</option>{['2G', '5G', '6G', 'MLO', 'Unknown'].map((value) => <option key={value} value={value}>{value}</option>)}</Select></FormControl>
     </Flex></CardBody></Card>
     {query.isError && <Alert status="error" mb={3}><AlertIcon />Unable to load clients. Try Refresh.</Alert>}
     {vendors.isError && <Alert status="warning" mb={3}><AlertIcon />Vendor lookup unavailable.</Alert>}

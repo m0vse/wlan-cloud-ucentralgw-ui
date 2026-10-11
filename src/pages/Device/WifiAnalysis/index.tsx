@@ -11,6 +11,7 @@ import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import { compactSecondsToDetailed } from 'helpers/dateFormatting';
 import { parseDbm } from 'helpers/stringHelper';
 import { operatingBand } from 'helpers/operatingBand';
+import { ssidRadio } from 'helpers/ssidRadio';
 import { radioInDfs } from 'helpers/radioDfs';
 import { HealthCheck, useGetHealthChecks } from 'hooks/Network/HealthChecks';
 import { DeviceStatistics, useGetDeviceNewestStats, useGetMacOuis } from 'hooks/Network/Statistics';
@@ -71,19 +72,7 @@ const parseAssociations = (data: { data: DeviceStatistics; recorded: number }, r
 
   for (const interfaceObj of data.data.interfaces ?? []) {
     for (const ssid of interfaceObj.ssids ?? []) {
-      let radio: ParsedRadio | undefined;
-
-      if (ssid.phy) {
-        const foundRadio = radios.find((r) => r.phy === ssid.phy);
-        if (foundRadio) radio = foundRadio;
-      }
-      if (!radio) {
-        const potentialIndex = ssid.radio?.$ref?.split('/').pop();
-        if (potentialIndex) {
-          const foundRadio = radios[parseInt(potentialIndex, 10)];
-          if (foundRadio) radio = foundRadio;
-        }
-      }
+      const radio = ssidRadio(ssid, radios);
 
       for (const association of ssid.associations ?? []) {
         const ips = interfaceObj.clients?.find(({ mac }) => mac === association.station);
