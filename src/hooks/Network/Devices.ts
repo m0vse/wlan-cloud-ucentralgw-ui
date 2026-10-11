@@ -219,10 +219,10 @@ export type DevicesStats = {
 const getInitialStats = async () =>
   axiosGw.get(`devices?connectionStatistics=true`).then(({ data }: { data: DevicesStats }) => data);
 export const useGetDevicesStats = ({ onError }: { onError?: (e: AxiosError) => void }) => {
-  const { isUserLoaded } = useAuth();
+  const { isUserLoaded, user } = useAuth();
 
   return useQuery(['devices', 'all', 'connection-statistics'], () => getInitialStats(), {
-    enabled: isUserLoaded,
+    enabled: isUserLoaded && user?.userRole === 'root',
     onError,
   });
 };

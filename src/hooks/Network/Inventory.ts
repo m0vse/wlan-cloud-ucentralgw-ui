@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { axiosProv } from 'constants/axiosInstances';
 import { AxiosError } from 'models/Axios';
 import { Note } from 'models/Note';
+import { useAuth } from 'contexts/AuthProvider';
 
 export type InventoryTag = {
   contact: string;
@@ -50,11 +51,13 @@ export type InventoryTag = {
   venue: string;
 };
 
-const getTag = async (serialNumber?: string) =>
-  axiosProv.get(`inventory/${serialNumber}?withExtendedInfo=true`).then(({ data }) => data as InventoryTag);
-export const useGetTag = ({ serialNumber, onError }: { serialNumber?: string; onError?: (e: AxiosError) => void }) =>
-  useQuery(['tag', serialNumber], () => getTag(serialNumber), {
+const getTag = async (serialNumber?: string, extended = true) =>
+  axiosProv.get(`inventory/${serialNumber}${extended ? '?withExtendedInfo=true' : ''}`).then(({ data }) => data as InventoryTag);
+export const useGetTag = ({ serialNumber, onError }: { serialNumber?: string; onError?: (e: AxiosError) => void }) => {
+  const { user } = useAuth();
+  return useQuery(['tag', serialNumber], () => getTag(serialNumber, user?.userRole === 'root'), {
     enabled: serialNumber !== undefined && serialNumber !== '',
     onError,
     staleTime: 1000 * 60 * 5,
   });
+};

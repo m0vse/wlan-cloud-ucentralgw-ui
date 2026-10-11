@@ -1,6 +1,7 @@
 import { useToast } from '@chakra-ui/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from 'contexts/AuthProvider';
 import { v4 as uuid } from 'uuid';
 import { axiosFms, axiosGw } from 'constants/axiosInstances';
 import { AxiosError } from 'models/Axios';
@@ -171,12 +172,14 @@ export const useGetFirmwareAges = ({
   serialNumbers?: string[];
   onError?: (e: AxiosError) => void;
   limit?: number;
-}) =>
-  useQuery(['devices', 'firmwareAge', serialNumbers], () => getFirmwareAges(serialNumbers), {
-    enabled: serialNumbers !== undefined && serialNumbers.length > 0,
+}) => {
+  const { user } = useAuth();
+  return useQuery(['devices', 'firmwareAge', serialNumbers], () => getFirmwareAges(serialNumbers), {
+    enabled: user?.userRole === 'root' && serialNumbers !== undefined && serialNumbers.length > 0,
     keepPreviousData: true,
     onError,
   });
+};
 
 const getFirmwareForDeviceType = async (offset: number, deviceType: string) =>
   axiosFms

@@ -13,6 +13,8 @@ import { useTranslation } from 'react-i18next';
 import SubNavigationButton from './SubNavigationButton';
 import IconBox from 'components/Containers/IconBox';
 import { RouteGroup } from 'models/Routes';
+import { useAuth } from 'contexts/AuthProvider';
+import { canAccessGatewayRoute } from 'helpers/scopedGatewayAccess';
 
 const variantChange = '0.2s linear';
 
@@ -22,6 +24,7 @@ type Props = {
 };
 
 const NestedNavButton = ({ isActive, route }: Props) => {
+  const { user } = useAuth();
   const { t } = useTranslation();
   const inactiveTextColor = useColorModeValue('gray.600', 'gray.200');
   const hoverBg = useColorModeValue('blue.100', 'blue.800');
@@ -52,7 +55,7 @@ const NestedNavButton = ({ isActive, route }: Props) => {
       </AccordionButton>
       <AccordionPanel pl="18px" paddingEnd={0} pr="-18px">
         <Box pl={1} pr={-1} borderLeft="1px solid #63b3ed">
-          {route.children.map((subRoute) => (
+          {route.children.filter((subRoute) => canAccessGatewayRoute(user, subRoute)).map((subRoute) => (
             <SubNavigationButton key={subRoute.path} route={subRoute} isActive={isActive} />
           ))}
         </Box>

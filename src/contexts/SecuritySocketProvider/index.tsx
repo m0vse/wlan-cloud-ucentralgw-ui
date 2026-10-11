@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSecurityStore } from './useStore';
 import { SecuritySocketRawMessage } from './utils';
 import { useAuth } from 'contexts/AuthProvider';
+import { useScopedNotifications } from 'hooks/useScopedNotifications';
 
 export type SecuritySocketContextReturn = Record<string, unknown>;
 
@@ -13,6 +14,7 @@ const SecuritySocketContext = React.createContext<SecuritySocketContextReturn>({
 
 export const SecuritySocketProvider = ({ children }: { children: React.ReactElement }) => {
   const { token, isUserLoaded } = useAuth();
+  const canSubscribe = useScopedNotifications(useSecurityStore, true, false);
   const { addMessage, isOpen, webSocket, onStartWebSocket } = useSecurityStore((state) => ({
     addMessage: state.addMessage,
     isOpen: state.isWebSocketOpen,
@@ -35,14 +37,6 @@ export const SecuritySocketProvider = ({ children }: { children: React.ReactElem
   }, []);
 
   // useEffect for created the WebSocket and 'storing' it in useRef
-  useEffect(() => {
-    if (isUserLoaded) {
-      onStartWebSocket(token ?? '');
-    }
-
-    const wsCurrent = webSocket;
-    return () => wsCurrent?.close();
-  }, [isUserLoaded]);
 
   // useEffect for generating global notifications
   useEffect(() => {
@@ -70,7 +64,7 @@ export const SecuritySocketProvider = ({ children }: { children: React.ReactElem
           // If tab is active again, verify if browser killed the WS
           clearTimeout(timeoutId);
 
-          if (!isOpen && isUserLoaded) {
+          if (!isOpen && canSubscribe) {
             onStartWebSocket(token ?? '');
           }
         }
@@ -81,7 +75,7 @@ export const SecuritySocketProvider = ({ children }: { children: React.ReactElem
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [webSocket, isOpen]);
+  }, [webSocket, isOpen, canSubscribe, token]);
 
   const values: SecuritySocketContextReturn = useMemo(() => ({}), []);
 

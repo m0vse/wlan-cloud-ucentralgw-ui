@@ -17,6 +17,8 @@ import { getUsernameRadiusSessions } from 'hooks/Network/Radius';
 import { axiosProv } from 'constants/axiosInstances';
 import { InventoryTag } from 'hooks/Network/Inventory';
 import { matchApNames } from 'helpers/apNameSearch';
+import { useAuth } from 'contexts/AuthProvider';
+import { searchScopedDevices } from 'helpers/scopedDeviceSearch';
 
 const chakraStyles: (
   colorMode: 'light' | 'dark',
@@ -79,6 +81,7 @@ const asyncComponents = {
 };
 
 const GlobalSearchBar = () => {
+  const { user } = useAuth();
   const { colorMode } = useColorMode();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -89,8 +92,13 @@ const GlobalSearchBar = () => {
   const onNewSearch = React.useCallback(
     async (v: string, callback: (options: OptionsOrGroups<SearchOption, GroupBase<SearchOption>>) => void) => {
       if (v.length < 3) return callback([]);
+      if (user?.userRole !== 'root' && v.match('^[a-fA-F0-9-*]+$')) {
+        const results = await searchScopedDevices(v).catch(() => []);
+        return callback(results);
+      }
 
       if (v.includes('rad:')) {
+        if (user?.userRole !== 'root') return callback([]);
         const trimmed = v.replace('rad:', '').trim();
         if (trimmed.length < 3) return callback([]);
         const cleaned = trimmed.toLowerCase();
@@ -163,7 +171,7 @@ const GlobalSearchBar = () => {
       }
       return callback(names);
     },
-    [queryClient, store.searchSerialNumber],
+    [queryClient, store.searchSerialNumber, user?.userRole],
   );
 
   const debouncedNewSearch = React.useCallback(

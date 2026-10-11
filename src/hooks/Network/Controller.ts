@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { axiosGw } from 'constants/axiosInstances';
+import { useAuth } from 'contexts/AuthProvider';
 
 export type ControllerDashboardAssociations = {
   tag: '2G' | '5G' | '6G';
@@ -60,8 +61,11 @@ export type ControllerDashboardResponse = {
 const getDashboard = () =>
   axiosGw.get(`deviceDashboard`).then((response) => response.data) as Promise<ControllerDashboardResponse>;
 
-export const useGetControllerDashboard = () =>
-  useQuery(['controller', 'dashboard'], getDashboard, {
+export const useGetControllerDashboard = () => {
+  const { user } = useAuth();
+  return useQuery(['controller', 'dashboard'], getDashboard, {
+    enabled: user?.userRole === 'root',
     keepPreviousData: true,
     refetchInterval: 30000,
   });
+};

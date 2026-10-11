@@ -3,14 +3,18 @@ import { Link } from '@chakra-ui/react';
 import { DeviceWithStatus } from 'hooks/Network/Devices';
 import { useGetProvUi } from 'hooks/Network/Endpoints';
 import { useGetTag } from 'hooks/Network/Inventory';
+import { useAuth } from 'contexts/AuthProvider';
 
 type Props = {
   device: DeviceWithStatus;
 };
 const ProvisioningStatusCell = ({ device }: Props) => {
+  const { user } = useAuth();
   const getProvUi = useGetProvUi();
   const getTag = useGetTag({ serialNumber: device.serialNumber });
   const goToProvUi = (dir: string) => `${getProvUi.data}/#/${dir}`;
+  if (user?.userRole !== 'root') return <span>{getTag.data?.venue ? `Venue ${getTag.data.venue}`
+    : getTag.data?.entity ? `Entity ${getTag.data.entity}` : '-'}</span>;
 
   if (getTag.data?.extendedInfo?.entity?.name) {
     return (

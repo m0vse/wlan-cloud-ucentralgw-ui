@@ -4,6 +4,7 @@ import { useProvisioningStore } from './useStore';
 import { ProvisioningSocketRawMessage } from './utils';
 import { axiosProv, axiosSec } from 'constants/axiosInstances';
 import { useAuth } from 'contexts/AuthProvider';
+import { useScopedNotifications } from 'hooks/useScopedNotifications';
 
 export type ProvisioningSocketContextReturn = Record<string, unknown>;
 
@@ -14,6 +15,7 @@ const ProvisioningSocketContext = React.createContext<ProvisioningSocketContextR
 
 export const ProvisioningSocketProvider = ({ children }: { children: React.ReactElement }) => {
   const { token, isUserLoaded } = useAuth();
+  const canSubscribe = useScopedNotifications(useProvisioningStore, axiosProv?.defaults?.baseURL !== axiosSec?.defaults?.baseURL, false);
   const { pushNotification, modal } = useWebSocketNotification();
   const { addMessage, isOpen, webSocket, onStartWebSocket } = useProvisioningStore((state) => ({
     addMessage: state.addMessage,
@@ -35,14 +37,6 @@ export const ProvisioningSocketProvider = ({ children }: { children: React.React
   }, []);
 
   // useEffect for created the WebSocket and 'storing' it in useRef
-  useEffect(() => {
-    if (isUserLoaded && axiosProv?.defaults?.baseURL !== axiosSec?.defaults?.baseURL) {
-      onStartWebSocket(token ?? '');
-    }
-
-    const wsCurrent = webSocket;
-    return () => wsCurrent?.close();
-  }, [isUserLoaded]);
 
   // useEffect for generating global notifications
   useEffect(() => {
@@ -70,7 +64,7 @@ export const ProvisioningSocketProvider = ({ children }: { children: React.React
           // If tab is active again, verify if browser killed the WS
           clearTimeout(timeoutId);
 
-          if (!isOpen && isUserLoaded && axiosProv?.defaults?.baseURL !== axiosSec?.defaults?.baseURL) {
+          if (!isOpen && canSubscribe) {
             onStartWebSocket(token ?? '');
           }
         }
@@ -81,7 +75,7 @@ export const ProvisioningSocketProvider = ({ children }: { children: React.React
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [webSocket, isOpen]);
+  }, [webSocket, isOpen, canSubscribe, token]);
 
   const values: ProvisioningSocketContextReturn = useMemo(() => ({}), []);
 

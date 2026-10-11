@@ -6,12 +6,14 @@ import { Card } from 'components/Containers/Card';
 import { compactSecondsToDetailed, minimalSecondsToDetailed } from 'helpers/dateFormatting';
 import { bytesString } from 'helpers/stringHelper';
 import { useGetDevicesStats } from 'hooks/Network/Devices';
+import { useAuth } from 'contexts/AuthProvider';
 
 const SidebarDevices = () => {
+  const { user } = useAuth();
   const { t } = useTranslation();
   const getStats = useGetDevicesStats({});
 
-  if (!getStats.data) return null;
+  if (user?.userRole !== 'root' || !getStats.data) return null;
 
   return (
     <Card p={4}>

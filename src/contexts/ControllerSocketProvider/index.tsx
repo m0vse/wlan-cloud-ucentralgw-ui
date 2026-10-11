@@ -4,6 +4,7 @@ import { useControllerStore } from './useStore';
 import { ControllerSocketRawMessage } from './utils';
 import { axiosGw, axiosSec } from 'constants/axiosInstances';
 import { useAuth } from 'contexts/AuthProvider';
+import { useScopedNotifications } from 'hooks/useScopedNotifications';
 
 export type ControllerSocketContextReturn = Record<string, unknown>;
 
@@ -14,6 +15,7 @@ const ControllerSocketContext = React.createContext<ControllerSocketContextRetur
 
 export const ControllerSocketProvider = ({ children }: { children: React.ReactElement }) => {
   const { token, isUserLoaded } = useAuth();
+  const canSubscribe = useScopedNotifications(useControllerStore, axiosGw?.defaults?.baseURL !== axiosSec?.defaults?.baseURL, true);
   const { addMessage, isOpen, webSocket, onStartWebSocket } = useControllerStore((state) => ({
     addMessage: state.addMessage,
     isOpen: state.isWebSocketOpen,
@@ -36,14 +38,6 @@ export const ControllerSocketProvider = ({ children }: { children: React.ReactEl
   }, []);
 
   // useEffect for created the WebSocket and 'storing' it in useRef
-  useEffect(() => {
-    if (isUserLoaded && axiosGw?.defaults?.baseURL !== axiosSec?.defaults?.baseURL) {
-      onStartWebSocket(token ?? '');
-    }
-
-    const wsCurrent = webSocket;
-    return () => wsCurrent?.close();
-  }, [isUserLoaded]);
 
   // useEffect for generating global notifications
   useEffect(() => {
@@ -71,7 +65,7 @@ export const ControllerSocketProvider = ({ children }: { children: React.ReactEl
           // If tab is active again, verify if browser killed the WS
           clearTimeout(timeoutId);
 
-          if (!isOpen && isUserLoaded && axiosGw?.defaults?.baseURL !== axiosSec?.defaults?.baseURL) {
+          if (!isOpen && canSubscribe) {
             onStartWebSocket(token ?? '');
           }
         }
@@ -82,7 +76,7 @@ export const ControllerSocketProvider = ({ children }: { children: React.ReactEl
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [webSocket, isOpen]);
+  }, [webSocket, isOpen, canSubscribe, token]);
 
   const values: ControllerSocketContextReturn = useMemo(() => ({}), []);
 

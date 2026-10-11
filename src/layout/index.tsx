@@ -1,7 +1,7 @@
 import React from 'react';
 import { useBoolean, useColorMode } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { v4 as uuid } from 'uuid';
 import SidebarDevices from './Devices';
 import { Navbar } from './Navbar';
@@ -14,8 +14,11 @@ import { RouteName } from 'models/Routes';
 import NotFoundPage from 'pages/NotFound';
 import routes from 'router/routes';
 import DeviceTitle from 'pages/Device/Title';
+import { useAuth } from 'contexts/AuthProvider';
+import { canAccessGatewayRoute } from 'helpers/scopedGatewayAccess';
 
 const Layout = () => {
+  const { user } = useAuth();
   const { t } = useTranslation();
   const location = useLocation();
   const deviceSerial = location.pathname.match(/^\/devices\/([^/]+)\/?$/)?.[1]?.toLowerCase();
@@ -64,17 +67,20 @@ const Layout = () => {
 
     for (const route of routes) {
       // @ts-ignore
-      if (!route.children) instances.push(<Route path={route.path} element={<route.component />} key={route.id} />);
+      if (!route.children) instances.push(<Route path={route.path} element={canAccessGatewayRoute(user, route)
+        ? <route.component /> : <p>Access to this page is not assigned.</p>} key={route.id} />);
       else {
         for (const child of route.children) {
           // @ts-ignore
-          instances.push(<Route path={child.path} element={<child.component />} key={child.id} />);
+          instances.push(<Route path={child.path} element={canAccessGatewayRoute(user, child)
+            ? <child.component /> : child.id === 'devices-dashboard' && user
+              ? <Navigate to="/" replace /> : <p>Access to this page is not assigned.</p>} key={child.id} />);
         }
       }
     }
 
     return instances;
-  }, []);
+  }, [user]);
 
   return (
     <>

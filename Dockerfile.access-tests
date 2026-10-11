@@ -1,0 +1,10 @@
+FROM openwifi-owprov-access-tests:20261011
+USER 0:0
+WORKDIR /gateway
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+RUN npm install --prefix /tmp/gateway-dom-tests --no-audit --no-fund --package-lock=false jsdom@22.1.0
+COPY . ./
+RUN NODE_PATH=/tmp/gateway-dom-tests/node_modules node test-scoped-gateway-interactions.cjs
+RUN for test in test-*.cjs; do case "$test" in test-scoped-gateway-interactions.cjs) ;; *) node "$test" || exit 1 ;; esac; done
+RUN npm run build -- --outDir /tmp/gateway-scoped-build --emptyOutDir
