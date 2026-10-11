@@ -117,7 +117,8 @@ const GlobalSearchBar = () => {
       }
       // Use the authenticated provisioning inventory, not only the visible device page.
       const names = await queryClient.fetchQuery(
-        ['global-search-inventory-names'],
+        user?.userRole === 'root' ? ['global-search-inventory-names']
+          : ['scoped-search-inventory-names', user?.id, user?.securityPolicyChange],
         async () => {
           const tags: Pick<InventoryTag, 'name' | 'serialNumber'>[] = [];
           for (let offset = 0; ; offset += 100) {
@@ -171,7 +172,7 @@ const GlobalSearchBar = () => {
       }
       return callback(names);
     },
-    [queryClient, store.searchSerialNumber, user?.userRole],
+    [queryClient, store.searchSerialNumber, user?.userRole, user?.id, user?.securityPolicyChange],
   );
 
   const debouncedNewSearch = React.useCallback(

@@ -107,6 +107,7 @@ const check = (condition, label) => { assert.ok(condition, label); ++checks; };
   await settle(() => root.render(React.createElement(ChakraProvider, null, React.createElement(QueryClientProvider, { client },
     React.createElement(MemoryRouter, null, React.createElement(AuthProvider, { token: 'isolated-gw-token' }, nested))))));
   for (let i = 0; i < 6 && !deviceQuery.data; ++i) await settle();
+  for (let i = 0; i < 6 && !document.body.textContent.includes(`Venue ${siteId}`); ++i) await settle();
   check(auth.isUserLoaded && auth.token === 'isolated-gw-token', 'scoped gateway bootstrap loaded');
   check(deviceQuery.data.devicesWithStatus[0].serialNumber === device.serialNumber, 'scoped default status list loaded');
   check(document.body.textContent.includes(`Venue ${siteId}`), 'plain scoped provisioning status displayed');
