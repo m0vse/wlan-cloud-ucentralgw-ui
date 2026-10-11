@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { Box, Button, Code, Heading, useClipboard } from '@chakra-ui/react';
+import { Box, Button, Heading, useClipboard } from '@chakra-ui/react';
+import DiagnosticReport from 'components/InformationDisplays/DiagnosticReport';
 import { useTranslation } from 'react-i18next';
 import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import { Modal } from 'components/Modals/Modal';
@@ -46,9 +47,7 @@ const DetailedLogViewModal = ({ modalProps, log }: Props) => {
         <Heading size="sm">
           {t('controller.devices.config_id')}: {log.UUID}
         </Heading>
-        <Code whiteSpace="pre-wrap" overflowWrap="anywhere" display="block" mt={2}>
-          {content}
-        </Code>
+        <DiagnosticReport value={log.logType === 2 ? log.data : { message: log.log, details: log.data }} rawValue={log} />
       </Box>
     </Modal>
   );

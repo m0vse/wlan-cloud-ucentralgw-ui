@@ -1,25 +1,18 @@
 import * as React from 'react';
 import {
-  Accordion,
-  AccordionButton,
-  AccordionIcon,
-  AccordionItem,
-  AccordionPanel,
   Alert,
   AlertDescription,
   AlertIcon,
   AlertTitle,
   Box,
   Center,
-  Code,
   Tab,
   TabList,
   TabPanel,
   TabPanels,
   Tabs,
-  useColorMode,
 } from '@chakra-ui/react';
-import { JsonViewer } from '@textea/json-viewer';
+import DiagnosticReport from 'components/InformationDisplays/DiagnosticReport';
 import { useTranslation } from 'react-i18next';
 import DownloadScriptButton from './DownloadScriptButton';
 import DownloadTraceButton from './DownloadTraceButton';
@@ -41,7 +34,6 @@ type Props = {
 
 const CommandResultModal = ({ modalProps, command: initialCommandInfo }: Props) => {
   const { t } = useTranslation();
-  const { colorMode } = useColorMode();
   const { data: command } = useGetSingleCommandHistory({
     commandId: initialCommandInfo?.UUID ?? '',
     serialNumber: initialCommandInfo?.serialNumber ?? '',
@@ -73,47 +65,10 @@ const CommandResultModal = ({ modalProps, command: initialCommandInfo }: Props) 
       command.status === 'completed'
     ) {
       return (
-        <Code whiteSpace="pre-line">{command.results?.status?.result ?? JSON.stringify(command.results, null, 2)}</Code>
+        <DiagnosticReport value={command.results?.status?.result ?? command.results} rawValue={command.results} />
       );
     }
-    return (
-      <Accordion defaultIndex={0} allowToggle>
-        <AccordionItem>
-          <h2>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                {t('common.preview')}
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-          </h2>
-          <AccordionPanel pb={4}>
-            <JsonViewer
-              rootName={false}
-              displayDataTypes={false}
-              enableClipboard={false}
-              theme={colorMode === 'light' ? undefined : 'dark'}
-              defaultInspectDepth={1}
-              value={command.results?.status as object}
-              style={{ background: 'unset', display: 'unset' }}
-            />
-          </AccordionPanel>
-        </AccordionItem>
-        <AccordionItem>
-          <h2>
-            <AccordionButton>
-              <Box flex="1" textAlign="left">
-                {t('analytics.raw_data')}
-              </Box>
-              <AccordionIcon />
-            </AccordionButton>
-          </h2>
-          <AccordionPanel pb={4} overflowX="auto" overflowY="auto" maxH="500px">
-            <pre>{JSON.stringify(command.results?.status, null, 2)}</pre>
-          </AccordionPanel>
-        </AccordionItem>
-      </Accordion>
-    );
+    return <DiagnosticReport value={command.results?.status ?? command.results} rawValue={command.results} />;
   };
 
   return (
@@ -136,44 +91,7 @@ const CommandResultModal = ({ modalProps, command: initialCommandInfo }: Props) 
         </TabList>
         <TabPanels>
           <TabPanel>{results()}</TabPanel>
-          <TabPanel>
-            <Accordion defaultIndex={0} allowToggle>
-              <AccordionItem>
-                <h2>
-                  <AccordionButton>
-                    <Box flex="1" textAlign="left">
-                      {t('common.preview')}
-                    </Box>
-                    <AccordionIcon />
-                  </AccordionButton>
-                </h2>
-                <AccordionPanel pb={4}>
-                  <JsonViewer
-                    rootName={false}
-                    displayDataTypes={false}
-                    enableClipboard={false}
-                    theme={colorMode === 'light' ? undefined : 'dark'}
-                    defaultInspectDepth={1}
-                    value={command as object}
-                    style={{ background: 'unset', display: 'unset' }}
-                  />
-                </AccordionPanel>
-              </AccordionItem>
-              <AccordionItem>
-                <h2>
-                  <AccordionButton>
-                    <Box flex="1" textAlign="left">
-                      {t('analytics.raw_data')}
-                    </Box>
-                    <AccordionIcon />
-                  </AccordionButton>
-                </h2>
-                <AccordionPanel pb={4} overflowX="auto" overflowY="auto" maxH="500px">
-                  <pre>{JSON.stringify(command, null, 2)}</pre>
-                </AccordionPanel>
-              </AccordionItem>
-            </Accordion>
-          </TabPanel>
+          <TabPanel><DiagnosticReport value={command} /></TabPanel>
         </TabPanels>
       </Tabs>
     </Modal>

@@ -16,7 +16,7 @@ const HealthCheckHistory = ({ serialNumber }: Props) => {
   const { t } = useTranslation();
   const [limit, setLimit] = React.useState(25);
   const [hiddenColumns, setHiddenColumns] = React.useState<string[]>([]);
-  const { time, setTime, getCustomHealthChecks, getHealthChecks, columns } = useHealthCheckTable({
+  const { time, setTime, getCustomHealthChecks, getHealthChecks, columns, modal } = useHealthCheckTable({
     serialNumber,
     limit,
   });
@@ -91,6 +91,7 @@ const HealthCheckHistory = ({ serialNumber }: Props) => {
           </Center>
         )}
       </Box>
+      {modal}
     </Box>
   );
 };

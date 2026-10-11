@@ -22,5 +22,6 @@ assert.equal(deviceLogDetails({ logType: 0, log: 'ordinary log\nsecond line' }),
 const modal = fs.readFileSync('src/pages/Device/LogsCard/LogHistory/DetailedLogViewModal.tsx', 'utf8');
 assert.match(modal, /useClipboard\(content\)/);
 assert.match(modal, /setValue\(content\)/);
-assert.match(modal, /\{content\}/);
-console.log('PASS: structured reboot details, legacy strings, mixed/missing data and matching display/copy');
+assert.match(modal, /<DiagnosticReport/);
+assert.match(modal, /rawValue=\{log\}/);
+console.log('PASS: structured reboot details, legacy strings, mixed/missing data, report view and retained copy');

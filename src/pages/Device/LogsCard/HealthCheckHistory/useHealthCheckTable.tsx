@@ -1,5 +1,7 @@
 import * as React from 'react';
-import { Badge, Box } from '@chakra-ui/react';
+import { Badge, Box, IconButton, useDisclosure } from '@chakra-ui/react';
+import { MagnifyingGlass } from '@phosphor-icons/react';
+import HealthDetailsModal from './DetailsModal';
 import { useTranslation } from 'react-i18next';
 import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import { HealthCheck, useGetHealthChecks, useGetHealthChecksWithTimestamps } from 'hooks/Network/HealthChecks';
@@ -13,6 +15,8 @@ type Props = {
 const useHealthCheckTable = ({ serialNumber, limit }: Props) => {
   const { t } = useTranslation();
   const getHealthChecks = useGetHealthChecks({ serialNumber, limit });
+  const modalProps = useDisclosure();
+  const [selectedHealth, setSelectedHealth] = React.useState<HealthCheck>();
   const [time, setTime] = React.useState<{ start: Date; end: Date } | undefined>();
   const getCustomHealthChecks = useGetHealthChecksWithTimestamps({
     serialNumber,
@@ -39,7 +43,8 @@ const useHealthCheckTable = ({ serialNumber, limit }: Props) => {
       </Badge>
     );
   }, []);
-  const jsonCell = React.useCallback((v: Record<string, unknown>) => <pre>{JSON.stringify(v, null, 0)}</pre>, []);
+  const jsonCell = (health: HealthCheck) => <IconButton aria-label="Open Health Details" colorScheme="blue" size="xs"
+    icon={<MagnifyingGlass size={16} />} onClick={() => { setSelectedHealth(health); modalProps.onOpen(); }} />;
 
   const columns: Column<HealthCheck>[] = React.useMemo(
     (): Column<HealthCheck>[] => [
@@ -75,7 +80,7 @@ const useHealthCheckTable = ({ serialNumber, limit }: Props) => {
         Header: t('common.details'),
         Footer: '',
         accessor: 'values',
-        Cell: (v) => jsonCell(v.cell.row.original.values),
+        Cell: (v) => jsonCell(v.cell.row.original),
         customWidth: '35px',
         disableSortBy: true,
       },
@@ -89,6 +94,7 @@ const useHealthCheckTable = ({ serialNumber, limit }: Props) => {
     getCustomHealthChecks,
     time,
     setTime,
+    modal: <HealthDetailsModal health={selectedHealth} isOpen={modalProps.isOpen} onClose={modalProps.onClose} />,
   };
 };
 

@@ -50,12 +50,10 @@ const useDeviceLogsTable = ({ serialNumber, limit, logType }: Props) => {
       ) : (
         v.log
       ),
-    [onOpen],
+    [onOpen, logType],
   );
 
-  const detailsCell = React.useCallback((v: DeviceLog) => {
-    if (logType === 2) {
-      return (
+  const detailsCell = React.useCallback((v: DeviceLog) => (
         <Box display="flex">
           <IconButton
             aria-label="Open Log Details"
@@ -66,14 +64,10 @@ const useDeviceLogsTable = ({ serialNumber, limit, logType }: Props) => {
             mr={2}
           />
           <Text my="auto" textOverflow="ellipsis" overflow="hidden" whiteSpace="nowrap">
-            {JSON.stringify(v.data, null, 0)}
+            View report
           </Text>
         </Box>
-      );
-    }
-
-    return <pre>{JSON.stringify(v.data, null, 0)}</pre>;
-  }, []);
+      ), [onOpen]);
 
   const dateCell = React.useCallback(
     (v: number) => (
