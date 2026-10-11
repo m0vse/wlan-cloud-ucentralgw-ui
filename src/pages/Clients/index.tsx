@@ -13,7 +13,7 @@ import { clientStatus, latestClients, statusColumnOrder, matchesClientBand, clie
 import { MloLinks, Mlo } from './MloLinks';
 
 type AP = { apSerial: string; apName: string; entityId: string; entityName: string; venueId: string; venueName: string; apConnected: boolean };
-type Association = AP & { id: string; mac: string; vendor?: string; status?: string; freshness?: { label: string; color: string; reason: string }; ssid: string; bssid: string; band: string; mlo?: Mlo; channel?: number; ip: string; ipv4Addresses?: string[]; ipv6Addresses?: string[]; signal?: number; rxRate?: number; txRate?: number; startTime: number | null; endTime: number | null; lastSeen: number };
+type Association = AP & { id: string; mac: string; vendor?: string; status?: string; freshness?: { label: string; color: string; reason: string }; ssid: string; bssid: string; band: string; mlo?: Mlo; channel?: number; ip: string; ipv4Addresses?: string[]; ipv6Addresses?: string[]; signal?: number; signalSource?: 'average'; rxRate?: number; txRate?: number; startTime: number | null; endTime: number | null; lastSeen: number };
 type Response = { rows: Association[]; aps: AP[]; errors: { apSerial: string; message: string }[]; generatedAt: number; historySamples: number };
 const date = (value: number | null) => value ? new Date(value * 1000).toLocaleString() : '—';
 const options = (aps: AP[], id: 'entityId' | 'venueId', name: 'entityName' | 'venueName') => Array.from(new Map(aps.filter((ap) => ap[id]).map((ap) => [ap[id], ap[name]])).entries()).sort((a, b) => a[1].localeCompare(b[1]));

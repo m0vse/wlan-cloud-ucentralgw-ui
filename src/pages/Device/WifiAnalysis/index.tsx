@@ -12,6 +12,7 @@ import { compactSecondsToDetailed } from 'helpers/dateFormatting';
 import { parseDbm } from 'helpers/stringHelper';
 import { operatingBand } from 'helpers/operatingBand';
 import { ssidRadio } from 'helpers/ssidRadio';
+import { isNegotiatedMlo } from 'helpers/negotiatedMlo';
 import { radioInDfs } from 'helpers/radioDfs';
 import { HealthCheck, useGetHealthChecks } from 'hooks/Network/HealthChecks';
 import { DeviceStatistics, useGetDeviceNewestStats, useGetMacOuis } from 'hooks/Network/Statistics';
@@ -84,6 +85,7 @@ const parseAssociations = (data: { data: DeviceStatistics; recorded: number }, r
             ipv6: ips?.ipv6_addresses ?? [],
           },
           station: association.station,
+          isMlo: isNegotiatedMlo(association),
           ssid: ssid.ssid,
           rssi: association.rssi ? parseDbm(association.rssi) : '-',
           mode: ssid.mode,

@@ -179,6 +179,13 @@ def associations(state):
                 }
                 if mlo:
                     row.update(mlo=mlo, band="MLO", channel=None)
+                    # The Miami MLD aggregate can report instant RSSI as zero.
+                    # Prefer only a real driver-provided average, and label it.
+                    if row["signal"] in (None, 0):
+                        average = number(client.get("rssi_avg"))
+                        row["signal"] = average if average is not None and -127 <= average < 0 else None
+                        if row["signal"] is not None:
+                            row["signalSource"] = "average"
                 result[key] = row
     return result
 

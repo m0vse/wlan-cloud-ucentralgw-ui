@@ -76,6 +76,7 @@ export type DeviceInterfaceStatistics = {
         nss: number;
       };
       station: string;
+      mlo?: unknown;
       tid_stats: {
         rx_msdu: number;
         tx_msdu: number;

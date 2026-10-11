@@ -29,7 +29,8 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const { ChakraProvider } = require('@chakra-ui/react');
 const markup = renderToStaticMarkup(React.createElement(ChakraProvider, null, React.createElement(loaded.exports.MloLinks, { mlo })));
-for (const expected of ['<details', '<summary', 'MLO · 2 links', '5G · link 0 · channel 153', '6G · link 1 · channel 37', '02:00:00:00:12:00', 'traffic counters are shared, not added']) assert.ok(markup.includes(expected), expected);
+for (const expected of ['<details', '<summary', 'MLO', '5G · CH 153', '6G · CH 37']) assert.ok(markup.includes(expected), expected);
+for (const unwanted of ['Negotiated links', 'traffic counters', 'Client:', 'BSSID:', '02:00:00:00:12:00']) assert.ok(!markup.includes(unwanted), unwanted);
 assert.ok(!markup.includes('[object Object]'));
 const page = fs.readFileSync('src/pages/Clients/index.tsx', 'utf8');
 assert.match(page, /row.original.band === 'MLO' && row.original.mlo/);
@@ -48,4 +49,22 @@ assert.equal(ssidRadio({ radio: { $ref: '#/radios/0' } }, radios).band, '5G');
 assert.equal(ssidRadio({ radio: { $ref: '#/invalid/1' } }, radios), undefined);
 assert.equal(ssidRadio({ phy: 'missing' }, radios), undefined);
 assert.match(fs.readFileSync('src/pages/Device/WifiAnalysis/index.tsx', 'utf8'), /const radio = ssidRadio\(ssid, radios\)/);
+const peerFile = './src/helpers/negotiatedMlo.ts';
+const peerModule = new Module(peerFile, module);
+peerModule._compile(ts.transpileModule(fs.readFileSync(peerFile, 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText, peerFile);
+const { isNegotiatedMlo } = peerModule.exports;
+const native = { station: mlo.mldAddress, mlo: { mld_address: mlo.mldAddress, counters_scope: 'mld',
+  links: mlo.links.map((link) => ({ link_id: link.linkId, address: link.mac, bssid: link.bssid, frequency: link.frequency })) } };
+assert.equal(isNegotiatedMlo(native), true);
+assert.equal(isNegotiatedMlo({ station: mlo.mldAddress }), false);
+assert.equal(isNegotiatedMlo({ station: mlo.mldAddress, mlo_links: native.mlo.links }), false);
+assert.equal(isNegotiatedMlo({ ...native, station: 5 }), false);
+assert.equal(isNegotiatedMlo({ ...native, mlo: { ...native.mlo, links: native.mlo.links.slice(0, 1) } }), false);
+assert.equal(isNegotiatedMlo({ ...native, mlo: { ...native.mlo, links: [native.mlo.links[0], native.mlo.links[0]] } }), false);
+assert.equal(isNegotiatedMlo({ ...native, mlo: { ...native.mlo, mld_address: '02:00:00:00:00:01' } }), false);
+assert.match(fs.readFileSync('src/pages/Device/WifiAnalysis/AssocationsTable.tsx', 'utf8'), /assoc.isMlo \? 'MLO' : assoc.radio\?\.band/);
+assert.match(fs.readFileSync('src/pages/Device/WifiAnalysis/index.tsx', 'utf8'), /isMlo: isNegotiatedMlo\(association\)/);
+assert.ok(!page.includes(' (avg)'));
 console.log('PASS: negotiated MLO disclosure rendering, per-link bands/addresses, filters/search, latest roaming and history; ordinary clients unchanged');

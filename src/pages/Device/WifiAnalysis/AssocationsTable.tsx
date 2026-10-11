@@ -15,6 +15,7 @@ export type ParsedAssociation = {
     ipv6: string[];
   };
   station: string;
+  isMlo?: boolean;
   ssid: string;
   rssi: number | string;
   mode: string;
@@ -51,7 +52,7 @@ const WifiAnalysisAssociationsTable = ({ data, ouis, isSingle }: Props) => {
     [],
   );
   const dataCell = React.useCallback((v: number) => <DataCell bytes={v} />, []);
-  const indexCell = React.useCallback((assoc: ParsedAssociation) => assoc.radio?.band ?? assoc.radio?.deductedBand, []);
+  const indexCell = React.useCallback((assoc: ParsedAssociation) => assoc.isMlo ? 'MLO' : assoc.radio?.band ?? assoc.radio?.deductedBand, []);
   const ipCell = React.useCallback(
     (assoc: ParsedAssociation) => <IpCell ipv4={assoc.ips.ipv4} ipv6={assoc.ips.ipv6} />,
     [],

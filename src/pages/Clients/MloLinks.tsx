@@ -8,14 +8,11 @@ export type Mlo = {
 };
 
 export const MloLinks = ({ mlo }: { mlo: Mlo }) => (
-  <Box as="details" whiteSpace="normal" minW="180px">
-    <Box as="summary" cursor="pointer">MLO · {mlo.links.length} links</Box>
-    <Text fontSize="xs" mt={1}>Negotiated links; traffic counters are shared, not added.</Text>
+  <Box as="details" whiteSpace="normal" minW="110px">
+    <Box as="summary" cursor="pointer">MLO</Box>
     {mlo.links.map((link) => (
-      <Box key={link.linkId} mt={2} fontSize="xs">
-        <Text>{link.band} · link {link.linkId} · {link.channel != null ? `channel ${link.channel}` : `${link.frequency} MHz`}</Text>
-        <Text fontFamily="mono">Client: {link.mac}</Text>
-        <Text fontFamily="mono">BSSID: {link.bssid}</Text>
+      <Box key={link.linkId} mt={1} fontSize="xs">
+        <Text>{link.band} · {link.channel != null ? `CH ${link.channel}` : `${link.frequency} MHz`}</Text>
       </Box>
     ))}
   </Box>

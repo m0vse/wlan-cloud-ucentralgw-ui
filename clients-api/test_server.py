@@ -64,6 +64,26 @@ class ClientsTests(unittest.TestCase):
         self.assertEqual(rows[0]["mlo"]["links"][1]["frequency"], 6275)
         self.assertEqual(rows[0]["lastSeen"], 110)
 
+    def test_mlo_signal_uses_real_average_not_zero_or_ack_signal(self):
+        client = self.mlo_client()
+        client.update(rssi=0, rssi_avg=-49, ack_signal=-46)
+        row = next(iter(server.associations(sample(100, [client])["data"]).values()))
+        self.assertEqual(row["signal"], -49)
+        self.assertEqual(row["signalSource"], "average")
+        for average in (None, 0, False, "-49", -200):
+            client["rssi_avg"] = average
+            row = next(iter(server.associations(sample(100, [client])["data"]).values()))
+            self.assertIsNone(row["signal"])
+        client.update(rssi=-55, rssi_avg=-49)
+        row = next(iter(server.associations(sample(100, [client])["data"]).values()))
+        self.assertEqual(row["signal"], -55)
+        self.assertNotIn("signalSource", row)
+        client.pop("mlo")
+        client["rssi"] = 0
+        row = next(iter(server.associations(sample(100, [client])["data"]).values()))
+        self.assertEqual(row["signal"], 0, "ordinary/older client reporting unchanged")
+        self.assertNotIn("signalSource", row)
+
     def test_authentication_precedes_any_data_access(self):
         for value in (None, "", "Basic abc", "Bearer bad\nheader"):
             with patch.object(server, "fetch") as fetch:
