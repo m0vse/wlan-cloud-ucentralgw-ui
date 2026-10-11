@@ -8,7 +8,8 @@ export const parseDiagnostic = (value: unknown): unknown => {
 
 export const diagnosticLabel = (key: string) => key
   .replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]/g, ' ')
-  .replace(/\b(ssid|bssid|mlo|dfs|phy|ip|uuid)\b/gi, (word) => word.toUpperCase())
+  .replace(/\b(ssid|bssid)(s)?\b/gi, (_, word, plural) => word.toUpperCase() + (plural ? 's' : ''))
+  .replace(/\b(mlo|dfs|phy|ip|uuid)\b/gi, (word) => word.toUpperCase())
   .replace(/^./, (letter) => letter.toUpperCase());
 
 export const diagnosticText = (value: unknown): string => {
