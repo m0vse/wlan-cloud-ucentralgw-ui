@@ -1,5 +1,6 @@
 """Read-only association view. Authorisation is verified by owsec on every request."""
 import concurrent.futures
+import ipaddress
 import json
 import math
 import os
@@ -50,6 +51,58 @@ def number(value):
     return value if isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) else None
 
 
+def operating_band(radio):
+    frequencies = radio.get("frequency")
+    frequency = frequencies[0] if isinstance(frequencies, list) and frequencies else frequencies
+    frequency = number(frequency)
+    if frequency is not None:
+        if 5925 <= frequency <= 7125:
+            return "6G"
+        if 4900 <= frequency < 5925:
+            return "5G"
+        if 2400 <= frequency <= 2500:
+            return "2G"
+        if 57000 <= frequency <= 71000:
+            return "60G"
+    bands = radio.get("band") or []
+    if isinstance(bands, str):
+        bands = [bands]
+    bands = {"5G" if band.startswith("5G") else band for band in bands if isinstance(band, str) and band}
+    return next(iter(bands)) if len(bands) == 1 else "Unknown"
+
+
+def usable_addresses(values, version):
+    """Keep observed addresses, preferring routable scope over link-local scope."""
+    if isinstance(values, str):
+        values = [values]
+    if not isinstance(values, list):
+        return []
+    parsed = []
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        try:
+            address = ipaddress.ip_address(value.strip())
+        except ValueError:
+            continue
+        if address.version != version or address.is_unspecified or address.is_loopback or address.is_multicast:
+            continue
+        if str(address) == "255.255.255.255":
+            continue
+        if address not in parsed:
+            parsed.append(address)
+    preferred = [address for address in parsed if not address.is_link_local]
+    return [str(address) for address in preferred or parsed]
+
+
+def client_addresses(client, observed, version):
+    direct = usable_addresses(client.get(f"ipaddr_v{version}"), version)
+    fallback = usable_addresses(observed.get(f"ipv{version}_addresses"), version)
+    # A stale link-local association must not conceal a usable neighbour address.
+    preferred_direct = usable_addresses([v for v in direct if not ipaddress.ip_address(v).is_link_local], version)
+    return preferred_direct or usable_addresses(direct + fallback, version)
+
+
 def associations(state):
     radios = state.get("radios") or []
     result = {}
@@ -62,19 +115,21 @@ def associations(state):
                 match = re.search(r"/(\d+)$", reference)
                 if match and int(match[1]) < len(radios):
                     radio = radios[int(match[1])]
-            band = radio.get("band") or []
-            band = band[0] if isinstance(band, list) and band else band if isinstance(band, str) else "Unknown"
-            if band.startswith("5G"):
-                band = "5G"
+            band = operating_band(radio)
             for client in ssid.get("associations") or []:
+                if client.get("authorized") is False:
+                    continue  # Authentication attempts are not connected clients.
                 mac = str(client.get("station", "")).lower()
                 if not mac:
                     continue
                 bssid = str(ssid.get("bssid") or client.get("bssid") or ssid.get("iface") or "")
-                ip = client.get("ipaddr_v4") or ", ".join(addresses.get(mac, {}).get("ipv4_addresses") or [])
+                ipv4 = client_addresses(client, addresses.get(mac, {}), 4)
+                ipv6 = client_addresses(client, addresses.get(mac, {}), 6)
+                ip = ", ".join(ipv4 + ipv6)
                 result[(mac, bssid)] = {
                     "mac": mac, "bssid": bssid, "ssid": ssid.get("ssid", ""),
                     "band": band, "channel": radio.get("channel"), "ip": ip,
+                    "ipv4Addresses": ipv4, "ipv6Addresses": ipv6,
                     "signal": number(client.get("rssi")),
                     "rxRate": number((client.get("rx_rate") or {}).get("bitrate")),
                     "txRate": number((client.get("tx_rate") or {}).get("bitrate")),

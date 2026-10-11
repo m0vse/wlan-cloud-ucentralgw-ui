@@ -70,6 +70,28 @@ class ClientsTests(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual([r["band"] for r in rows], ["6G", "6G"])
 
+    def test_existing_operating_frequency_wins_over_multiband_capabilities(self):
+        for frequency, expected in ((2462, "2G"), (5745, "5G"), (6135, "6G"), (60480, "60G")):
+            self.assertEqual(server.operating_band({"frequency": [frequency], "band": ["5G", "6G"]}), expected)
+        self.assertEqual(server.operating_band({"band": ["5G-upper"]}), "5G")
+        self.assertEqual(server.operating_band({"band": ["5G", "6G"]}), "Unknown")
+
+    def test_authentication_attempt_not_a_connected_client(self):
+        data = sample(100, [{"station": "aa:bb", "authorized": False}])["data"]
+        self.assertEqual(server.associations(data), {})
+        data["interfaces"][0]["ssids"][0]["associations"][0].pop("authorized")
+        self.assertEqual(len(server.associations(data)), 1, "older APs without authorization metadata still report")
+
+    def test_existing_ipv4_ipv6_and_link_local_preference(self):
+        data = sample(100, [{"station": "aa:bb", "ipaddr_v4": "169.254.1.2", "ipaddr_v6": "2001:db8::2"}])["data"]
+        data["interfaces"][0]["clients"][0]["ipv4_addresses"] = ["169.254.5.6", "192.0.2.1"]
+        row = next(iter(server.associations(data).values()))
+        self.assertEqual(row["ipv4Addresses"], ["192.0.2.1"])
+        self.assertEqual(row["ipv6Addresses"], ["2001:db8::2"])
+        self.assertEqual(row["ip"], "192.0.2.1, 2001:db8::2")
+        self.assertEqual(server.usable_addresses(["bad", "0.0.0.0", "127.0.0.1", "224.0.0.1", "255.255.255.255", "169.254.1.2"], 4), ["169.254.1.2"])
+        self.assertEqual(server.usable_addresses(["::", "::1", "ff02::1", "fe80::1", "2001:db8::2", "2001:db8::2"], 6), ["2001:db8::2"])
+
     def test_filters_and_default_excludes_ended(self):
         root = {"userRole": "root"}
         rows = [{"endTime": None, "entityId": "customer", "venueId": "site", "apSerial": "test", "band": "6G"},
