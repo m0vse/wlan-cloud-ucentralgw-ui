@@ -44,3 +44,22 @@ const commands = fs.readFileSync('src/pages/Device/LogsCard/CommandHistory/Resul
 assert.match(commands, /<WifiScanResultDisplay/);
 assert.match(commands, /<DownloadTraceButton/);
 console.log('PASS: diagnostic reports, health magnifier/summary, raw originals, bounded view, plain text and all diagnostic modal integrations');
+
+// Render the real shared component, including nested health values and escaped text.
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+const { ChakraProvider } = require('@chakra-ui/react');
+const componentFile = './src/components/InformationDisplays/DiagnosticReport.tsx';
+const renderedModule = new Module(componentFile, module);
+renderedModule.require = (request) => request === 'helpers/diagnosticReport' ? loaded.exports : require(request);
+renderedModule._compile(ts.transpileModule(fs.readFileSync(componentFile, 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
+}).outputText, componentFile);
+const markup = renderToStaticMarkup(React.createElement(ChakraProvider, null,
+  React.createElement(renderedModule.exports.default, { value: { ...payload, message: '<script>unsafe</script>' }, rawValue: payload })));
+assert.ok(markup.includes('Raw JSON / original data'));
+assert.ok(markup.includes('Failed SSIDs'));
+assert.ok(markup.includes('&lt;script&gt;unsafe&lt;/script&gt;'));
+assert.ok(!markup.includes('<script>unsafe</script>'));
+assert.ok(!markup.includes('[object Object]'));
+console.log('PASS: real diagnostic component renders structured health, raw disclosure and safely escaped text');
