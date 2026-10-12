@@ -21,7 +21,7 @@ const originalLoad = Module._load;
 Module._load = function (name, parent, isMain) {
   if (name === 'react-i18next') return { useTranslation: () => ({ t: (key) => key }) };
   if (name === 'contexts/AuthProvider') return { useAuth: () => ({ setToken: () => { throw new Error('Unexpected login success'); } }) };
-  if (name === 'hooks/useApiRequirements') return { __esModule: true, default: () => ({ accessPolicyLink: '', passwordPolicyLink: '' }) };
+  if (name === 'hooks/useApiRequirements') return { useApiRequirements: () => ({ accessPolicyLink: '', passwordPolicyLink: '' }) };
   if (name === 'hooks/Network/Login') return { useLogin: () => {
     const [error, setError] = React.useState();
     return { error, mutateAsync: async (_, { onError }) => { const response = { response: { status: 403, data: { ErrorCode: code } } }; setError(response); onError(response); } };
