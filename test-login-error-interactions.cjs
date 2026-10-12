@@ -6,7 +6,7 @@ const Module = require('node:module');
 const ts = require('typescript');
 const { JSDOM } = require('jsdom');
 const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'http://localhost' });
-for (const key of ['window', 'document', 'navigator', 'HTMLElement', 'SVGElement', 'Element', 'HTMLInputElement', 'HTMLSelectElement', 'Node', 'Event', 'MutationObserver']) global[key] = dom.window[key];
+for (const key of ['window', 'document', 'navigator', 'HTMLElement', 'SVGElement', 'Element', 'HTMLInputElement', 'HTMLSelectElement', 'HTMLButtonElement', 'Node', 'Event', 'MutationObserver']) global[key] = dom.window[key];
 global.getComputedStyle = dom.window.getComputedStyle;
 global.requestAnimationFrame = (cb) => setTimeout(cb, 0); global.cancelAnimationFrame = clearTimeout;
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -26,7 +26,7 @@ Module._load = function (name, parent, isMain) {
     const [error, setError] = React.useState();
     return { error, mutateAsync: async (_, { onError }) => { const response = { response: { status: 403, data: { ErrorCode: code } } }; setError(response); onError(response); } };
   } };
-  if (name === 'components/FormFields/StringField') return { __esModule: true, default: ({ name }) => {
+  if (name === 'components/Form/Fields/StringField') return { __esModule: true, default: ({ name }) => {
     const [props] = useField(name); return React.createElement('input', { ...props, 'aria-label': name });
   } };
   if (/^(models|hooks|constants|contexts)\//.test(name)) name = path.resolve('src', name);
