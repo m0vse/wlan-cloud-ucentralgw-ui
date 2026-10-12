@@ -33,8 +33,10 @@ import { CardHeader } from 'components/Containers/Card/CardHeader';
 import SimpleIconStatDisplay from 'components/Containers/SimpleIconStatDisplay';
 import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import { useGetControllerDashboard } from 'hooks/Network/Controller';
+import { useAuth } from 'contexts/AuthProvider';
+import ScopedOverview from './ScopedOverview';
 
-const DevicesDashboard = () => {
+const RootDevicesDashboard = () => {
   const { t } = useTranslation();
   const getDashboard = useGetControllerDashboard();
   return (
@@ -112,4 +114,9 @@ const DevicesDashboard = () => {
   );
 };
 
+const DevicesDashboard = () => {
+  const { user, isUserLoaded } = useAuth();
+  if (!isUserLoaded) return <Spinner aria-label="Loading dashboard identity" />;
+  return user?.userRole === 'root' ? <RootDevicesDashboard /> : <ScopedOverview />;
+};
 export default DevicesDashboard;

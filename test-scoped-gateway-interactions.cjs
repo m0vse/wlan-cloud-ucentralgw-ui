@@ -126,7 +126,7 @@ const check = (condition, label) => { assert.ok(condition, label); ++checks; };
   searchPages = false;
   for (const userRole of ['admin', 'noc', 'installer', 'accounting', 'csr']) {
     check(canAccessGatewayRoute({ userRole, securityPolicy: policy }, { id: 'devices-table' }), `${userRole} valid grant reaches list`);
-    check(!canAccessGatewayRoute({ userRole, securityPolicy: policy }, { id: 'devices-dashboard' }), `${userRole} global dashboard hidden`);
+    check(canAccessGatewayRoute({ userRole, securityPolicy: policy }, { id: 'devices-dashboard' }), `${userRole} scoped overview eligible`);
   }
   check(!canAccessGatewayRoute({ userRole: 'noc', securityPolicy: '{broken}' }, { id: 'devices-table' }), 'malformed policy denies navigation');
   role = 'root'; await settle(() => auth.refetchUser()); await settle();

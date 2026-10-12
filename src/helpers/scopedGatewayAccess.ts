@@ -20,7 +20,7 @@ export const canAccessGatewayRoute = (user: { userRole: string; securityPolicy: 
   if (!user) return false;
   if (user.userRole === 'root' || route.id === 'account-page') return true;
   const capabilities = scopedGatewayCapabilities(user);
-  if (['devices-group', 'devices-table', 'device-page'].includes(route.id)) return capabilities.has('devices.read');
+  if (['devices-group', 'devices-table', 'devices-dashboard', 'device-page'].includes(route.id)) return capabilities.has('devices.read');
   if (['firmware-group', 'firmware-table'].includes(route.id)) return capabilities.has('firmware.read');
   return false;
 };
