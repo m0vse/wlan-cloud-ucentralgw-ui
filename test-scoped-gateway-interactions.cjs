@@ -45,7 +45,7 @@ for (const extension of ['.ts', '.tsx']) Module._extensions[extension] = (mod, f
 };
 const transports = require('./src/constants/axiosInstances.ts');
 const calls = [];
-let role = 'noc';
+let role = 'admin';
 const siteId = '11111111-1111-4111-8111-111111111111';
 const policy = JSON.stringify({ version: 1, grants: [{ scopeType: 'venue', scopeId: siteId, includeDescendants: true,
   capabilities: ['devices.read', 'clients.read', 'configuration.read', 'firmware.read', 'diagnostics.read'] }] });
@@ -124,7 +124,7 @@ const check = (condition, label) => { assert.ok(condition, label); ++checks; };
   check(calls.some((url) => url.includes('limit=100&offset=100')) && sockets.length === 0, 'serial search paginates filtered HTTP only');
   const pageCalls = calls.length; await searchScopedDevices('ab'); check(calls.length === pageCalls, 'short searches do not fetch');
   searchPages = false;
-  for (const userRole of ['noc', 'installer', 'accounting', 'csr']) {
+  for (const userRole of ['admin', 'noc', 'installer', 'accounting', 'csr']) {
     check(canAccessGatewayRoute({ userRole, securityPolicy: policy }, { id: 'devices-table' }), `${userRole} valid grant reaches list`);
     check(!canAccessGatewayRoute({ userRole, securityPolicy: policy }, { id: 'devices-dashboard' }), `${userRole} global dashboard hidden`);
   }
