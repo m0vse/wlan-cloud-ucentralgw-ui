@@ -26,7 +26,7 @@ Module._load = function (name, parent, isMain) {
     const [error, setError] = React.useState();
     return { error, mutateAsync: async (_, { onError }) => { const response = { response: { status: 403, data: { ErrorCode: code } } }; setError(response); onError(response); } };
   } };
-  if (name === 'components/Form/Fields/StringField') return { __esModule: true, default: ({ name }) => {
+  if (name === 'components/Form/Fields/StringField') return { StringField: ({ name }) => {
     const [props] = useField(name); return React.createElement('input', { ...props, 'aria-label': name });
   } };
   if (/^(models|hooks|constants|contexts)\//.test(name)) name = path.resolve('src', name);
