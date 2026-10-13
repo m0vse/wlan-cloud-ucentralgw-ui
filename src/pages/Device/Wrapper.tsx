@@ -53,6 +53,7 @@ import { TraceModal } from 'components/Modals/TraceModal';
 import { WifiScanModal } from 'components/Modals/WifiScanModal';
 import { useDeleteDevice, useGetDevice, useGetDeviceHealthChecks, useGetDeviceStatus } from 'hooks/Network/Devices';
 import SwitchPortExamination from './SwitchPortExamination';
+import { healthPresentation } from 'helpers/healthStatus';
 
 type Props = {
   serialNumber: string;
@@ -145,19 +146,14 @@ const DevicePageWrapper = ({ serialNumber }: Props) => {
     if (!getStatus.data || !getStatus.data.connected || !getHealth.data || getHealth.data?.values?.length === 0)
       return null;
 
-    let color = 'red';
-    let sanity: number | undefined;
-    if (getHealth.data?.values?.[0]) {
-      const { sanity: sanityValue } = getHealth.data.values[0];
-      sanity = sanityValue;
-      if (sanityValue === 100) color = 'green';
-      else if (sanityValue > 80) color = 'yellow';
-    }
+    const health = getHealth.data.values[0];
+    const presentation = healthPresentation(health?.sanity, health?.values, getHealth.isError);
     return (
       <ResponsiveTag
-        label={sanity ? `${sanity}%` : t('common.unknown')}
-        colorScheme={color}
-        icon={color === 'green' ? Heart : HeartBreak}
+        data-health-status={presentation.critical ? 'critical' : presentation.color}
+        label={presentation.label}
+        colorScheme={presentation.color}
+        icon={presentation.color === 'green' ? Heart : HeartBreak}
       />
     );
   }, [getStatus.data, getHealth.data]);

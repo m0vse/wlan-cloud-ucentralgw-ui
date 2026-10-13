@@ -6,6 +6,8 @@ const ts = require('typescript');
 let ready = false;
 let calls = [];
 let options;
+let actor = { id: 'synthetic-root', userRole: 'root', capabilities: [] };
+let loaded = true;
 const toast = () => { throw new Error('Unexpected error toast'); };
 toast.isActive = () => false;
 const exportsObject = {};
@@ -19,8 +21,10 @@ const dependencies = {
   },
   'react-i18next': { useTranslation: () => ({ t: (value) => value }) },
   'constants/axiosInstances': {
-    axiosGw: { get: async (url) => { calls.push(url); return { data: { serialNumber: 'test' } }; } },
+    axiosGw: { defaults: { baseURL: 'http://synthetic-gateway' }, get: async (url) => { calls.push(url); return { data: { serialNumber: 'test' } }; } },
   },
+  'contexts/AuthProvider': { useAuth: () => ({ user: actor, isUserLoaded: loaded }) },
+  'helpers/scopedGatewayAccess': { scopedGatewayCapabilities: (user) => new Set(user?.capabilities || []) },
   'hooks/useEndpointStatus': { useEndpointStatus: (name) => {
     assert.equal(name, 'owgw');
     return { isReady: ready };
@@ -68,5 +72,19 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/hooks/Network/Devices
     await hook({ serialNumber: 'test', limit: 1 }).refetch();
     assert.deepEqual(calls, [path], `${name}: stops if endpoint becomes unavailable`);
   }
+  ready = true;
+  actor = { id: 'synthetic-viewer', userRole: 'admin', capabilities: ['devices.read'] };
+  calls = [];
+  await exportsObject.useGetDeviceHealthChecks({ serialNumber: 'test', limit: 1 }).refetch();
+  assert.equal(options.enabled, false);
+  assert.equal(calls.length, 0, 'health diagnostic permission is not bypassed');
+  actor.capabilities.push('diagnostics.read');
+  await exportsObject.useGetDeviceHealthChecks({ serialNumber: 'test', limit: 1 }).refetch();
+  assert.equal(options.enabled, true);
+  assert.equal(options.keepPreviousData, false, 'old scope health is not retained');
+  assert.equal(options.refetchInterval, 30000);
+  loaded = false; calls = [];
+  await exportsObject.useGetDeviceHealthChecks({ serialNumber: 'test', limit: 1 }).refetch();
+  assert.equal(options.enabled, false); assert.equal(calls.length, 0);
   console.log('PASS: device, status and health wait for gateway discovery, including manual refresh and readiness transitions');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

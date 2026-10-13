@@ -13,8 +13,6 @@ import {
 } from '@chakra-ui/react';
 import {
   CheckCircle,
-  Heart,
-  HeartBreak,
   LockSimple,
   ThermometerCold,
   ThermometerHot,
@@ -35,6 +33,7 @@ import MESH from './icons/MESH.png';
 import SWITCH from './icons/SWITCH.png';
 import DeviceLocaleCell from './LocaleCell';
 import ProvisioningStatusCell from './ProvisioningStatusCell';
+import DeviceHealthCell from './HealthCell';
 import DeviceUptimeCell from './Uptime';
 import { DataGrid } from 'components/DataTables/DataGrid';
 import { DataGridColumn, useDataGrid } from 'components/DataTables/DataGrid/useDataGrid';
@@ -329,20 +328,7 @@ const DeviceListCard = () => {
   );
 
   const sanityCell = React.useCallback((device: DeviceWithStatus) => {
-    if (!device.connected) return <Center>-</Center>;
-
-    let colorScheme = 'red';
-    if (device.sanity >= 80) colorScheme = 'yellow';
-    if (device.sanity === 100) colorScheme = 'green';
-
-    return (
-      <Center>
-        <Tag borderRadius="full" variant="subtle" colorScheme={colorScheme}>
-          <TagLabel>{device.sanity}%</TagLabel>
-          <TagRightIcon marginStart="0.1rem" as={colorScheme === 'green' ? Heart : HeartBreak} />
-        </Tag>
-      </Center>
-    );
+    return <DeviceHealthCell device={device} />;
   }, []);
 
   const loadCell = React.useCallback((device: DeviceWithStatus) => {

@@ -9,6 +9,7 @@ import { AxiosError } from 'models/Axios';
 import { DeviceRttyApiResponse, GatewayDevice, WifiScanCommand, WifiScanResult } from 'models/Device';
 import { Note } from 'models/Note';
 import { PageInfo } from 'models/Table';
+import { scopedGatewayCapabilities } from 'helpers/scopedGatewayAccess';
 import { DeviceCommandHistory } from './Commands';
 
 export const DEVICE_PLATFORMS = ['all', 'ap', 'switch'] as const;
@@ -255,10 +256,16 @@ export const useGetDeviceHealthChecks = ({
   limit?: number;
 }) => {
   const { isReady } = useEndpointStatus('owgw');
-  const canFetch = isReady && serialNumber !== undefined && serialNumber !== '';
-  const query = useQuery(['device', serialNumber, 'healthchecks', { limit }], () => getDeviceHealthChecks(serialNumber, limit), {
+  const { user, isUserLoaded } = useAuth();
+  const allowed = isUserLoaded && (user?.userRole === 'root' || scopedGatewayCapabilities(user).has('diagnostics.read'));
+  const canFetch = isReady && allowed && serialNumber !== undefined && serialNumber !== '';
+  const query = useQuery(['device', serialNumber, 'healthchecks', { limit }, user?.id, user?.userRole,
+    user?.securityPolicy, axiosGw.defaults.baseURL], () => getDeviceHealthChecks(serialNumber, limit), {
     enabled: canFetch,
-    keepPreviousData: true,
+    keepPreviousData: false,
+    refetchInterval: 30000,
+    staleTime: 30000,
+    cacheTime: 0,
     onError,
   });
   return {

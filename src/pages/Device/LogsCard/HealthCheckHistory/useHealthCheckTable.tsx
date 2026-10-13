@@ -5,6 +5,7 @@ import HealthDetailsModal from './DetailsModal';
 import { useTranslation } from 'react-i18next';
 import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import { HealthCheck, useGetHealthChecks, useGetHealthChecksWithTimestamps } from 'hooks/Network/HealthChecks';
+import { healthPresentation } from 'helpers/healthStatus';
 import { Column } from 'models/Table';
 
 type Props = {
@@ -32,14 +33,12 @@ const useHealthCheckTable = ({ serialNumber, limit }: Props) => {
     ),
     [],
   );
-  const sanityCell = React.useCallback((v: number) => {
-    let colorScheme = 'red';
-    if (v === 100) colorScheme = 'green';
-    else if (v >= 80) colorScheme = 'yellow';
+  const sanityCell = React.useCallback((health: HealthCheck) => {
+    const presentation = healthPresentation(health.sanity, health.values);
 
     return (
-      <Badge colorScheme={colorScheme} variant="solid">
-        {v}
+      <Badge data-health-status={presentation.critical ? 'critical' : presentation.color} colorScheme={presentation.color} variant="solid">
+        {presentation.label}
       </Badge>
     );
   }, []);
@@ -71,7 +70,7 @@ const useHealthCheckTable = ({ serialNumber, limit }: Props) => {
         Header: t('devices.sanity'),
         Footer: '',
         accessor: 'sanity',
-        Cell: (v) => sanityCell(v.cell.row.original.sanity),
+        Cell: (v) => sanityCell(v.cell.row.original),
         customWidth: '35px',
         disableSortBy: true,
       },
