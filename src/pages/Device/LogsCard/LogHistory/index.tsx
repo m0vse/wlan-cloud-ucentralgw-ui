@@ -16,7 +16,7 @@ const LogHistory = ({ serialNumber }: Props) => {
   const { t } = useTranslation();
   const [limit, setLimit] = React.useState(25);
   const [hiddenColumns, setHiddenColumns] = React.useState<string[]>([]);
-  const { time, setTime, getCustomLogs, getLogs, columns } = useDeviceLogsTable({ serialNumber, limit, logType: 0 });
+  const { time, setTime, getCustomLogs, getLogs, columns, modal } = useDeviceLogsTable({ serialNumber, limit, logType: 0 });
 
   const setNewTime = (start: Date, end: Date) => {
     setTime({ start, end });
@@ -82,6 +82,7 @@ const LogHistory = ({ serialNumber }: Props) => {
           </Center>
         )}
       </Box>
+      {modal}
     </Box>
   );
 };
