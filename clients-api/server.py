@@ -22,10 +22,13 @@ class ApiError(Exception):
         self.status, self.message = status, message
 
 
-def fetch(service, path, authorization):
+def fetch(service, path, authorization, body=None):
+    payload = None if body is None else json.dumps(body, allow_nan=False).encode()
     request = urllib.request.Request(
         f"{ORIGIN}:{PORTS[service]}/api/v1/{path}",
-        headers={"Authorization": authorization, "Accept": "application/json"},
+        data=payload,
+        headers={"Authorization": authorization, "Accept": "application/json",
+                 **({"Content-Type": "application/json"} if body is not None else {})},
     )
     try:
         with urllib.request.urlopen(request, timeout=12) as response:
@@ -40,11 +43,39 @@ def fetch(service, path, authorization):
 
 
 def require_root(authorization):
+    user = authenticated_user(authorization)
+    if user.get("userRole") != "root":
+        raise ApiError(403, "Root access required")
+
+
+def authenticated_user(authorization):
     if not re.fullmatch(r"Bearer [A-Za-z0-9._~+/-]+=*", authorization or ""):
         raise ApiError(401, "Sign in required")
     user = fetch("sec", "oauth2?me=true", authorization)
-    if user.get("userRole") != "root" or user.get("suspended") or user.get("blackListed"):
-        raise ApiError(403, "Root access required")
+    if not isinstance(user, dict) or user.get("suspended") is not False or user.get("blackListed") is not False:
+        raise ApiError(403, "Access unavailable")
+    if not isinstance(user.get("id"), str) or not user["id"] or not isinstance(user.get("userRole"), str):
+        raise ApiError(403, "Access unavailable")
+    return user
+
+
+def client_devices(authorization, user):
+    """The provisioner derives ownership; browser filters never grant access."""
+    result = fetch("prov", "access/check", authorization,
+                   {"userId": user["id"], "capability": "clients.read", "listDevices": True})
+    if not isinstance(result, dict) or not isinstance(result.get("devices"), list):
+        raise ApiError(502, "Invalid access response")
+    devices, seen = [], set()
+    for device in result["devices"]:
+        if not isinstance(device, dict) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", str(device.get("serialNumber", ""))):
+            raise ApiError(502, "Invalid access response")
+        serial = device["serialNumber"]
+        if serial not in seen:
+            seen.add(serial)
+            devices.append(device)
+    if len(devices) > 10000:
+        raise ApiError(502, "Device limit exceeded")
+    return devices
 
 
 def number(value):
@@ -111,7 +142,7 @@ def valid_mac(value):
 
 
 def negotiated_mlo(client):
-    """Accept peer metadata only, never infer MLO from an AP's capabilities."""
+    """Accept negotiated peer metadata, not the AP's MLO capabilities."""
     raw = client.get("mlo")
     if not isinstance(raw, dict) or raw.get("counters_scope") != "mld":
         return None
@@ -146,10 +177,8 @@ def associations(state):
     for interface in state.get("interfaces") or []:
         addresses = {str(c.get("mac", "")).lower(): c for c in interface.get("clients") or []}
         for ssid in interface.get("ssids") or []:
-            # A logical MLO link shares its physical PHY with another band. Its
-            # explicit reference identifies the exact logical radio, unlike PHY.
             reference = str((ssid.get("radio") or {}).get("$ref", ""))
-            match = re.fullmatch(r"#/radios/(\d+)", reference)
+            match = re.fullmatch(r"#?/radios/(\d+)", reference)
             radio = radios[int(match[1])] if match and int(match[1]) < len(radios) else {}
             if not radio:
                 radio = next((r for r in radios if ssid.get("phy") and r.get("phy") == ssid["phy"]), {})
@@ -165,8 +194,6 @@ def associations(state):
                 ipv6 = client_addresses(client, addresses.get(mac, {}), 6)
                 ip = ", ".join(ipv4 + ipv6)
                 mlo = negotiated_mlo(client)
-                # One session for the negotiated peer, even if a legacy exporter repeats
-                # its aggregate station on both SSID link rows. Never add those counters.
                 key = (mlo["mldAddress"], "mlo:" + str(ssid.get("ssid", ""))) if mlo else (mac, bssid)
                 row = {
                     "mac": mac, "bssid": bssid, "ssid": ssid.get("ssid", ""),
@@ -179,8 +206,6 @@ def associations(state):
                 }
                 if mlo:
                     row.update(mlo=mlo, band="MLO", channel=None)
-                    # The Miami MLD aggregate can report instant RSSI as zero.
-                    # Prefer only a real driver-provided average, and label it.
                     if row["signal"] in (None, 0):
                         average = number(client.get("rssi_avg"))
                         row["signal"] = average if average is not None and -127 <= average < 0 else None
@@ -234,13 +259,13 @@ def get_devices(authorization):
     raise ApiError(502, "Device limit exceeded; narrow the deployment scope")
 
 
-def device_rows(device, authorization, historic):
+def device_rows(device, authorization, historic, restricted=False):
     serial = str(device.get("serialNumber", ""))
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", serial):
         return [], None, "Invalid AP serial"
     partial = []
     try:
-        inventory = fetch("prov", f"inventory/{serial}?withExtendedInfo=true", authorization)
+        inventory = fetch("prov", f"inventory/{serial}" + ("" if restricted else "?withExtendedInfo=true"), authorization)
     except ApiError:
         inventory = {}
         partial.append("Inventory unavailable")
@@ -280,18 +305,28 @@ def device_rows(device, authorization, historic):
 
 
 def collect(authorization, params):
-    require_root(authorization)  # Must precede ALL inventory/statistics access.
+    user = authenticated_user(authorization)  # Before ALL inventory/statistics access.
+    restricted = user["userRole"] != "root"
     historic = params.get("historic", ["false"])[0] == "true"
-    devices = get_devices(authorization)
+    devices = client_devices(authorization, user) if restricted else get_devices(authorization)
     rows, aps, errors = [], [], []
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-        for result in pool.map(lambda device: device_rows(device, authorization, historic), devices):
+        for result in pool.map(lambda device: device_rows(device, authorization, historic, restricted=restricted), devices):
             values, ap, error = result
             rows.extend(values)
             if ap:
                 aps.append(ap)
             if error:
                 errors.append({"apSerial": (ap or {}).get("apSerial", ""), "message": error})
+    if restricted:
+        # A request may span telemetry calls: discard data revoked while it ran.
+        current = authenticated_user(authorization)
+        if current["id"] != user["id"]:
+            raise ApiError(403, "Access unavailable")
+        allowed = {device["serialNumber"] for device in client_devices(authorization, current)}
+        rows = [row for row in rows if row["apSerial"] in allowed]
+        aps = [ap for ap in aps if ap["apSerial"] in allowed]
+        errors = [error for error in errors if error["apSerial"] in allowed]
     for field, param in [("entityId", "entity"), ("venueId", "venue"), ("apSerial", "ap"), ("band", "band")]:
         value = params.get(param, [""])[0]
         if value:
