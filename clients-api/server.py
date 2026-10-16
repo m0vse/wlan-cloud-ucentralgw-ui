@@ -15,6 +15,7 @@ ORIGIN = os.environ.get("CONTROLLER_ORIGIN", "https://openwifi.shinesystems.co.u
 PORTS = {"sec": 16001, "gw": 16002, "prov": 16005}
 MAX_BYTES = 16 * 1024 * 1024
 HISTORY_SAMPLES = 24
+DETAIL_SAMPLES = 200
 
 
 class ApiError(Exception):
@@ -171,7 +172,7 @@ def negotiated_mlo(client):
     return {"mldAddress": mld, "links": sorted(result, key=lambda link: link["linkId"]), "countersScope": "mld"}
 
 
-def associations(state):
+def associations(state, detailed=False):
     radios = state.get("radios") or []
     result = {}
     for interface in state.get("interfaces") or []:
@@ -204,6 +205,25 @@ def associations(state):
                     "txRate": number((client.get("tx_rate") or {}).get("bitrate")),
                     "connectedSeconds": number(client.get("connected")),
                 }
+                if detailed:
+                    hostname = client.get("hostname") or addresses.get(mac, {}).get("hostname")
+                    if isinstance(hostname, str) and len(hostname) <= 255:
+                        row["hostname"] = hostname
+                    for name in ("rx_bytes", "tx_bytes", "rx_packets", "tx_packets", "tx_retries", "tx_failed",
+                                 "rx_drop_misc", "inactive", "snr", "rssi_avg"):
+                        value = number(client.get(name))
+                        if value is not None and (value >= 0 or name in ("rssi_avg", "snr")):
+                            row[name] = value
+                    for name in ("mode", "authentication", "encryption", "cipher"):
+                        if isinstance(client.get(name), str):
+                            row[name] = client[name]
+                    row["flags"] = {name: client[name] for name in ("authorized", "authenticated", "associated", "wmm", "wme", "mfp", "wds", "tdls")
+                                    if isinstance(client.get(name), bool)}
+                    row["rates"] = {direction: {key: value for key, value in (client.get(direction) or {}).items()
+                                                if key in ("bitrate", "mcs", "nss", "he_mcs", "vht_mcs", "eht_mcs", "bw", "sgi")
+                                                and isinstance(value, (int, float, bool)) and
+                                                (isinstance(value, bool) or number(value) is not None)}
+                                    for direction in ("rx_rate", "tx_rate") if isinstance(client.get(direction), dict)}
                 if mlo:
                     row.update(mlo=mlo, band="MLO", channel=None)
                     if row["signal"] in (None, 0):
@@ -215,7 +235,7 @@ def associations(state):
     return result
 
 
-def sessions(samples, metadata):
+def sessions(samples, metadata, detailed=False):
     """End times are observed disappearance, not an invented disassociation timestamp."""
     active, rows = {}, []
     valid = sorted((s for s in samples if number(s.get("recorded")) is not None), key=lambda s: s["recorded"])
@@ -226,7 +246,7 @@ def sessions(samples, metadata):
         if not isinstance(state, dict) or "interfaces" not in state:
             continue  # Partial/missing telemetry is not evidence that a client left.
         timestamp = sample["recorded"]
-        current = associations(state)
+        current = associations(state, detailed=detailed)
         for key in list(active):
             old = active[key]
             reset = key in current and current[key]["connectedSeconds"] is not None and old["connectedSeconds"] is not None and current[key]["connectedSeconds"] < old["connectedSeconds"]
@@ -243,6 +263,11 @@ def sessions(samples, metadata):
                 active[key] = row
             else:
                 active[key].update(client, lastSeen=timestamp)
+            if detailed:
+                # Keep per-client observations, never another station's raw report.
+                row = active[key]
+                row.setdefault("observations", []).append(dict(client, recorded=timestamp))
+                row.setdefault("firstSeen", timestamp)
     return rows
 
 
@@ -259,7 +284,7 @@ def get_devices(authorization):
     raise ApiError(502, "Device limit exceeded; narrow the deployment scope")
 
 
-def device_rows(device, authorization, historic, restricted=False):
+def device_rows(device, authorization, historic, restricted=False, detailed=False):
     serial = str(device.get("serialNumber", ""))
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", serial):
         return [], None, "Invalid AP serial"
@@ -293,10 +318,11 @@ def device_rows(device, authorization, historic, restricted=False):
         "entityId": entity_id, "entityName": entity.get("name") or entity_id or "Unassigned",
     }
     try:
-        samples = fetch("gw", f"device/{serial}/statistics?newest=true&limit={HISTORY_SAMPLES if historic else 1}", authorization).get("data")
+        limit = DETAIL_SAMPLES if detailed else HISTORY_SAMPLES if historic else 1
+        samples = fetch("gw", f"device/{serial}/statistics?newest=true&limit={limit}", authorization).get("data")
         if not isinstance(samples, list):
             raise ApiError(502, "Invalid statistics response")
-        rows = sessions(samples, metadata)
+        rows = sessions(samples, metadata, detailed=detailed)
         if not samples:
             partial.append("No association report")
         return rows, metadata, "; ".join(partial)
@@ -304,29 +330,33 @@ def device_rows(device, authorization, historic, restricted=False):
         return [], metadata, "Association reports unavailable"
 
 
-def collect(authorization, params):
+def collect(authorization, params, detail_mac=None):
     user = authenticated_user(authorization)  # Before ALL inventory/statistics access.
     restricted = user["userRole"] != "root"
-    historic = params.get("historic", ["false"])[0] == "true"
+    historic = detail_mac is not None or params.get("historic", ["false"])[0] == "true"
     devices = client_devices(authorization, user) if restricted else get_devices(authorization)
     rows, aps, errors = [], [], []
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-        for result in pool.map(lambda device: device_rows(device, authorization, historic, restricted=restricted), devices):
+        for result in pool.map(lambda device: device_rows(device, authorization, historic, restricted=restricted,
+                                                        **({"detailed": True} if detail_mac else {})), devices):
             values, ap, error = result
             rows.extend(values)
             if ap:
                 aps.append(ap)
             if error:
                 errors.append({"apSerial": (ap or {}).get("apSerial", ""), "message": error})
-    if restricted:
+    if restricted or detail_mac:
         # A request may span telemetry calls: discard data revoked while it ran.
         current = authenticated_user(authorization)
         if current["id"] != user["id"]:
             raise ApiError(403, "Access unavailable")
-        allowed = {device["serialNumber"] for device in client_devices(authorization, current)}
+        allowed = {device["serialNumber"] for device in (
+            devices if current["userRole"] == "root" else client_devices(authorization, current))}
         rows = [row for row in rows if row["apSerial"] in allowed]
         aps = [ap for ap in aps if ap["apSerial"] in allowed]
         errors = [error for error in errors if error["apSerial"] in allowed]
+    if detail_mac:
+        return client_detail(detail_mac, rows, errors)
     for field, param in [("entityId", "entity"), ("venueId", "venue"), ("apSerial", "ap"), ("band", "band")]:
         value = params.get(param, [""])[0]
         if value:
@@ -335,6 +365,50 @@ def collect(authorization, params):
         rows = [row for row in rows if row["endTime"] is None]
     return {"rows": rows, "aps": aps, "errors": errors, "generatedAt": int(time.time()),
             "historySamples": HISTORY_SAMPLES if historic else 1}
+
+
+def client_detail(mac, rows, errors):
+    """Join only explicitly negotiated MLD/link addresses within authorised data."""
+    identities = {mac}
+    def addresses(row):
+        return {v for v in [valid_mac(row.get("mac")),
+                           (row.get("mlo") or {}).get("mldAddress"),
+                           *[link.get("mac") for link in (row.get("mlo") or {}).get("links", [])]] if v}
+    # Identity sets are bounded by retained, authorised telemetry, not browser hints.
+    changed = True
+    while changed:
+        before = len(identities)
+        for row in rows:
+            found = addresses(row)
+            if identities & found:
+                identities.update(found)
+        changed = len(identities) != before
+    selected = [row for row in rows if identities & addresses(row)]
+    selected.sort(key=lambda row: (row.get("firstSeen", row["lastSeen"]), row["apSerial"], row["id"]))
+    observations = []
+    for row in selected:
+        for point in row.get("observations", []):
+            observations.append(dict(point, apSerial=row["apSerial"], apName=row["apName"], sessionId=row["id"]))
+    observations.sort(key=lambda point: (point["recorded"], point["apSerial"]))
+    # These are observed AP changes, not fabricated 802.11 roaming events.
+    by_time = {}
+    for point in observations:
+        by_time.setdefault(point["recorded"], []).append(point)
+    transitions, previous = [], None
+    for timestamp, points in sorted(by_time.items()):
+        if len({(p["apSerial"], p.get("bssid"), p.get("ssid")) for p in points}) != 1:
+            previous = None  # Simultaneous reports cannot establish a roam order.
+            continue
+        point = points[0]
+        if previous and previous["ssid"] == point["ssid"] and previous["apSerial"] != point["apSerial"]:
+            transitions.append({"recorded": timestamp, "fromAP": previous["apName"], "toAP": point["apName"],
+                                "fromSerial": previous["apSerial"], "toSerial": point["apSerial"], "inferred": True})
+        previous = point
+    return {"mac": mac, "addresses": sorted(identities), "sessions": selected,
+            "observations": observations, "transitions": transitions, "errors": errors,
+            "generatedAt": int(time.time()), "historySamples": DETAIL_SAMPLES,
+            "coverage": {"from": min(by_time) if by_time else None, "to": max(by_time) if by_time else None},
+            "limits": "Up to 200 retained reports per accessible AP. Gaps and older activity may be missing. End times and AP changes are inferred from reports; counters are AP-reported."}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -346,12 +420,18 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path.path == "/healthz":
                 return self.respond(200, {"status": "ok"})
+            if path.path == "/clients-api/client":
+                params = urllib.parse.parse_qs(path.query)
+                mac = valid_mac(params.get("mac", [""])[0])
+                if not mac:
+                    raise ApiError(400, "Valid client MAC required")
+                return self.respond(200, collect(self.headers.get("Authorization"), {}, detail_mac=mac))
             if path.path != "/clients-api/associations":
                 raise ApiError(404, "Not found")
             data = collect(self.headers.get("Authorization"), urllib.parse.parse_qs(path.query))
             self.respond(200, data)
         except ApiError as error:
-            self.respond(error.status if error.status in (401, 403, 404) else 502, {"error": error.message})
+            self.respond(error.status if error.status in (400, 401, 403, 404) else 502, {"error": error.message})
         except Exception:
             self.respond(502, {"error": "Unable to load association reports"})
 

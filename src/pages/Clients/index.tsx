@@ -11,6 +11,7 @@ import { axiosGw } from 'constants/axiosInstances';
 import { normalizeMac, isPrivateMac, vendorFor, vendorColumnOrder } from './vendors';
 import { clientStatus, latestClients, statusColumnOrder, matchesClientBand, clientSearchText } from './freshness';
 import { MloLinks, Mlo } from './MloLinks';
+import { ClientDetails } from './ClientDetails';
 
 type AP = { apSerial: string; apName: string; entityId: string; entityName: string; venueId: string; venueName: string; apConnected: boolean };
 type Association = AP & { id: string; mac: string; vendor?: string; status?: string; freshness?: { label: string; color: string; reason: string }; ssid: string; bssid: string; band: string; mlo?: Mlo; channel?: number; ip: string; ipv4Addresses?: string[]; ipv6Addresses?: string[]; signal?: number; signalSource?: 'average'; rxRate?: number; txRate?: number; startTime: number | null; endTime: number | null; lastSeen: number };
@@ -27,13 +28,14 @@ const Clients = () => {
   const [ap, setAp] = React.useState('');
   const [band, setBand] = React.useState('');
   const [search, setSearch] = React.useState('');
+  const [selectedClient, setSelectedClient] = React.useState<{ mac: string; vendor?: string }>();
   const [now, setNow] = React.useState(() => Date.now() / 1000);
   React.useEffect(() => {
     const timer = setInterval(() => setNow(Date.now() / 1000), 30000);
     return () => clearInterval(timer);
   }, []);
   const columns = React.useMemo<DataGridColumn<Association>[]>(() => [
-    { id: 'mac', accessorKey: 'mac', header: 'Client', cell: ({ row }) => <Text fontFamily="mono">{row.original.mac}</Text> },
+    { id: 'mac', accessorKey: 'mac', header: 'Client', cell: ({ row }) => <Link as="button" fontFamily="mono" onClick={(event) => { event.stopPropagation(); setSelectedClient(row.original); }}>{row.original.mac}</Link> },
     { id: 'vendor', accessorKey: 'vendor', header: 'Vendor' },
     { id: 'status', accessorKey: 'status', header: 'Status', cell: ({ row }) => <Tooltip label={row.original.freshness?.reason}><Badge colorScheme={row.original.freshness?.color}>{row.original.status}</Badge></Tooltip> },
     { id: 'ip', accessorKey: 'ip', header: 'IP address', cell: ({ row }) => {
@@ -43,10 +45,10 @@ const Clients = () => {
       return lines.length ? <Box>{lines.map((addresses, index) => <Text key={index} overflowWrap="anywhere">{addresses?.join(', ')}</Text>)}</Box> : '—';
     } },
     { id: 'ssid', accessorKey: 'ssid', header: 'SSID' },
-    { id: 'apName', accessorKey: 'apName', header: 'AP', cell: ({ row }) => <><Link as={RouterLink} to={`/devices/${row.original.apSerial}`}>{row.original.apName}</Link>{!row.original.apConnected && <Badge ml={2}>AP offline</Badge>}</> },
+    { id: 'apName', accessorKey: 'apName', header: 'AP', meta: { stopPropagation: true }, cell: ({ row }) => <><Link as={RouterLink} to={`/devices/${row.original.apSerial}`}>{row.original.apName}</Link>{!row.original.apConnected && <Badge ml={2}>AP offline</Badge>}</> },
     { id: 'entityName', accessorKey: 'entityName', header: 'Entity' },
     { id: 'venueName', accessorKey: 'venueName', header: 'Venue' },
-    { id: 'band', accessorKey: 'band', header: 'Band', cell: ({ row }) => row.original.band === 'MLO' && row.original.mlo ? <MloLinks mlo={row.original.mlo} /> : row.original.band },
+    { id: 'band', accessorKey: 'band', header: 'Band', meta: { stopPropagation: true }, cell: ({ row }) => row.original.band === 'MLO' && row.original.mlo ? <MloLinks mlo={row.original.mlo} /> : row.original.band },
     { id: 'channel', accessorKey: 'channel', header: 'Channel', cell: ({ row }) => row.original.channel ?? '—' },
     { id: 'signal', accessorKey: 'signal', header: 'Signal', cell: ({ row }) => row.original.signal == null ? '—' : `${row.original.signal} dBm` },
     { id: 'startTime', accessorKey: 'startTime', header: 'Start', cell: ({ row }) => date(row.original.startTime) },
@@ -99,9 +101,10 @@ const Clients = () => {
         leftContent: <Input bg="white" color="gray.700" width="280px" maxW="100%" aria-label="Search clients" placeholder="Search MAC, vendor, IP, SSID or AP" value={search} onChange={(event) => setSearch(event.target.value)} />,
         otherButtons: <Checkbox whiteSpace="nowrap" isChecked={historic} onChange={(event) => setHistoric(event.target.checked)}>Show historic clients</Checkbox>,
       }}
-      options={{ showAsCard: true, isManual: false, count: rows.length, refetch: () => query.refetch() }}
+      options={{ showAsCard: true, isManual: false, count: rows.length, refetch: () => query.refetch(), onRowClick: (row) => () => setSelectedClient(row) }}
     />
     <Text fontSize="xs" color="gray.500" mt={2}>Latest AP reports · refreshed {date(query.data?.generatedAt ?? null)} · stale after 10 minutes or AP offline{historic ? ' · recent history: up to 24 reports per AP; end time is when absence was first observed' : ' · one row per client, latest AP report'}</Text>
+    {selectedClient && token && <ClientDetails key={selectedClient.mac} mac={selectedClient.mac} vendor={selectedClient.vendor} token={token} onClose={() => setSelectedClient(undefined)} />}
   </Box>;
 };
 export default Clients;
