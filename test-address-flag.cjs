@@ -19,8 +19,15 @@ for (const ip of ['192.168.99.119', '10.0.0.1', '172.16.0.1', '::ffff:192.168.1.
   const html = renderToStaticMarkup(React.createElement(Flag, { address: ip, country: 'GB' }));
   assert.match(html, /aria-label="RFC1918"/);
   assert.match(html, /width="24" height="24"/);
+  assert.match(html, /border-radius:3px/);
+  assert.match(html, /fill="#2563eb"/);
+  assert.match(html, /fill="#0d9488"/);
   assert.doesNotMatch(html, /<img|flagcdn|countryCode/);
 }
+const rounded = renderToStaticMarkup(React.createElement(Flag, {
+  address: '192.168.1.1', style: { width: '24px', height: '24px', borderRadius: '20px' },
+}));
+assert.match(rounded, /border-radius:20px/);
 const publicHtml = renderToStaticMarkup(React.createElement(Flag, { address: '8.8.8.8', country: 'US' }));
 assert.match(publicHtml, /<img/);
 assert.doesNotMatch(publicHtml, /RFC1918/);
