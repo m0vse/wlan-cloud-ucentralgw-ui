@@ -14,7 +14,7 @@ import {
   useColorMode,
 } from '@chakra-ui/react';
 import { Cloud } from '@phosphor-icons/react';
-import ReactCountryFlag from 'react-country-flag';
+import AddressFlag from 'components/InformationDisplays/AddressFlag';
 import { useTranslation } from 'react-i18next';
 import LocationDisplayButton from './LocationDisplayButton';
 import { Card } from 'components/Containers/Card';
@@ -24,7 +24,7 @@ import FormattedDate from 'components/InformationDisplays/FormattedDate';
 import COUNTRY_LIST from 'constants/countryList';
 import { compactDate, compactSecondsToDetailed } from 'helpers/dateFormatting';
 import { bytesString, getRevision, uppercaseFirstLetter } from 'helpers/stringHelper';
-import { getDisplayCountry } from 'helpers/ipCountry';
+import { getDisplayCountry, isRFC1918 } from 'helpers/ipCountry';
 import { memoryHealthColor } from 'helpers/memoryHealth';
 import { useGetDevice, useGetDeviceCapabilities, useGetDeviceStatus } from 'hooks/Network/Devices';
 import { useGetDeviceLastStats } from 'hooks/Network/Statistics';
@@ -43,6 +43,7 @@ const DeviceSummary = ({ serialNumber }: Props) => {
   const getStatus = useGetDeviceStatus({ serialNumber });
   const getStats = useGetDeviceLastStats({ serialNumber });
   const country = getDisplayCountry(getStatus.data?.ipAddress, getDevice.data?.locale);
+  const privateAddress = isRFC1918(getStatus.data?.ipAddress);
 
   const getMemory = () => {
     if (getStats.data?.unit?.memory) {
@@ -148,12 +149,12 @@ const DeviceSummary = ({ serialNumber }: Props) => {
               <Heading size="sm">{t('common.locale')}:</Heading>
             </GridItem>
             <GridItem colSpan={1}>
-              {country === '' ? (
+              {country === '' && !privateAddress ? (
                 '-'
               ) : (
                 <Box mr={2}>
-                  <ReactCountryFlag style={ICON_STYLE} countryCode={country} svg />
-                  {COUNTRY_LIST.find(({ value }) => value === country)?.label}
+                  <AddressFlag style={ICON_STYLE} address={getStatus.data?.ipAddress} country={country} />
+                  {privateAddress ? 'RFC1918' : COUNTRY_LIST.find(({ value }) => value === country)?.label}
                 </Box>
               )}
               <LocationDisplayButton serialNumber={serialNumber} />

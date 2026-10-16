@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { CopyIcon } from '@chakra-ui/icons';
 import { Box, IconButton, Text, Tooltip, useClipboard } from '@chakra-ui/react';
-import ReactCountryFlag from 'react-country-flag';
 import { useTranslation } from 'react-i18next';
 import { DeviceWithStatus } from 'hooks/Network/Devices';
-import { getDisplayCountry } from 'helpers/ipCountry';
+import { getDisplayCountry, isRFC1918 } from 'helpers/ipCountry';
+import AddressFlag from 'components/InformationDisplays/AddressFlag';
 
 const ICON_STYLE = { width: '24px', height: '24px', borderRadius: '20px' };
 
@@ -16,12 +16,13 @@ const DeviceLocaleCell = ({ device }: Props) => {
   const { t } = useTranslation();
   const copy = useClipboard(device.ipAddress);
   const country = getDisplayCountry(device.ipAddress, device.locale);
+  const label = isRFC1918(device.ipAddress) ? 'RFC1918' : country;
 
   return (
-    <Tooltip label={`${country !== '' ? `${country} - ` : ''}${device.ipAddress}`} placement="top">
+    <Tooltip label={`${label !== '' ? `${label} - ` : ''}${device.ipAddress}`} placement="top">
       <Box w="100%" display="flex">
-        {country !== '' && device.ipAddress !== '' && (
-          <ReactCountryFlag style={ICON_STYLE} countryCode={country} svg />
+        {device.ipAddress !== '' && (
+          <AddressFlag style={ICON_STYLE} address={device.ipAddress} country={country} />
         )}
         <Tooltip
           label={copy.hasCopied ? `${t('common.copied')}!` : t('common.copy')}
