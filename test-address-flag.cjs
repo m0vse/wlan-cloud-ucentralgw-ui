@@ -15,15 +15,20 @@ function load(file, requireFn) {
 const helper = load('src/helpers/ipCountry.ts', require);
 const Flag = load('src/components/InformationDisplays/AddressFlag.tsx', name =>
   name === 'helpers/ipCountry' ? helper : require(name)).default;
+const style = { width: '24px', height: '24px', borderRadius: '20px' };
 for (const ip of ['192.168.99.119', '10.0.0.1', '172.16.0.1', '::ffff:192.168.1.2']) {
-  const html = renderToStaticMarkup(React.createElement(Flag, { address: ip, country: 'GB' }));
-  assert.match(html, /aria-label="RFC1918"/);
-  assert.match(html, /width="24" height="24"/);
-  assert.match(html, /border-radius:3px/);
-  assert.match(html, /fill="#2563eb"/);
-  assert.match(html, /fill="#0d9488"/);
-  assert.doesNotMatch(html, /<img|flagcdn|countryCode/);
+  const html = renderToStaticMarkup(React.createElement(Flag, { address: ip, country: 'GB', style }));
+  assert.match(html, /<img/);
+  assert.match(html, /alt="RFC1918"/);
+  assert.match(html, /src="\/flags\/rfc1918.svg"/);
+  const publicFlag = renderToStaticMarkup(React.createElement(Flag, { address: '8.8.8.8', country: 'GB', style }));
+  assert.equal(html.match(/style="([^"]+)"/)[1], publicFlag.match(/style="([^"]+)"/)[1]);
+  assert.doesNotMatch(html, /<svg/);
 }
+const asset = fs.readFileSync('public/flags/rfc1918.svg', 'utf8');
+assert.match(asset, /viewBox="0 0 24 18"/); // Same 4:3 intrinsic ratio as country SVG assets.
+assert.match(asset, /fill="#2563eb"/);
+assert.match(asset, /fill="#0d9488"/);
 const rounded = renderToStaticMarkup(React.createElement(Flag, {
   address: '192.168.1.1', style: { width: '24px', height: '24px', borderRadius: '20px' },
 }));
