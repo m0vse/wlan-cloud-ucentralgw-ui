@@ -22,7 +22,7 @@ const interfaceNameLabel = (v?: string) => {
     const split = v.split('v');
     const vlanId = split[split.length - 1];
 
-    return vlanId === '0' ? 'Upstream' : `Upstream - Vlan ${vlanId}`;
+    return vlanId === '0' ? `Network (${v})` : `Network - Vlan ${vlanId}`;
   }
   if (v.startsWith('down')) {
     const split = v.split('v');

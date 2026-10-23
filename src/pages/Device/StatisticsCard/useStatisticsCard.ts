@@ -1,6 +1,7 @@
 import React from 'react';
 import { interfaceCounters } from 'helpers/trafficRate';
 import { wirelessTraffic } from 'helpers/wirelessTraffic';
+import { upstreamTraffic } from 'helpers/upstreamTraffic';
 import { DeviceStatistics, useGetDeviceNewestStats, useGetDeviceStatsWithTimestamps } from 'hooks/Network/Statistics';
 
 const extractMemory = (stat: DeviceStatistics) => {
@@ -93,6 +94,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
       if (dataToLoop && !getCustomStats.data) {
         dataToLoop = [...dataToLoop].reverse();
       }
+      const upstream = upstreamTraffic(dataToLoop ?? []);
 
       for (const [index, stat] of dataToLoop ? dataToLoop.entries() : []) {
         if (index === 0) {
@@ -100,7 +102,7 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
           for (const inter of stat.data.interfaces ?? []) {
             if (!hasSelectedNew && !updated && selected === 'memory') {
               updated = true;
-              setSelected(inter.name);
+              setSelected(Object.keys(upstream.series)[0] ?? inter.name);
             }
             const counters = interfaceCounters(inter);
             previousRx[inter.name] = counters.rx_bytes;
@@ -276,8 +278,8 @@ export const useStatisticsCard = ({ serialNumber }: Props) => {
       }
       const wireless = wirelessTraffic(dataToLoop ?? []);
       return {
-        interfaces: { ...data, ...wireless.series },
-        labels: wireless.labels,
+        interfaces: { ...upstream.series, ...data, ...wireless.series },
+        labels: { ...wireless.labels, ...upstream.labels },
         memory: memoryData,
         vlans: vlanData,
       };
